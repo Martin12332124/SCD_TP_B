@@ -1,7 +1,7 @@
 ## Servidor Backend
 
 Este proyecto es el cerebro (Backend) en tiempo real para el control de congestión, desarrollado con Node.js, Express y Socket.io.
-
+Se usa Node.js con Express y Socket.io.
 A continuación, tienes los pasos exactos, detallados desde cero, para descargar, instalar y encender este servidor en CUALQUIER computadora 
 
 ---
