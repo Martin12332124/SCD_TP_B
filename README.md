@@ -34,14 +34,14 @@ cd Downloads
 ### Paso 3: Descargar el código desde GitHub
 Copia este comando exacto, pégalo en la terminal y presiona `Enter`:
 ```bash
-git clone https://github.com/Martin12332124/SCD_TP_F.git
+git clone https://github.com/Martin12332124/SCD_TP_B.git
 ```
-*(Esto creará automáticamente una carpeta llamada `SCD_TP_F` en las descargas).*
+*(Esto creará automáticamente una carpeta llamada `SCD_TP_B` en las descargas).*
 
 ### Paso 4: Entrar a la carpeta del proyecto
 Escribe este comando para meterte dentro de la carpeta que acabas de descargar y presiona `Enter`:
 ```bash
-cd SCD_TP_F
+cd SCD_TP_B
 ```
 
 ### Paso 5: Instalar las librerías del sistema
@@ -81,7 +81,7 @@ Para comprobar con tus propios ojos que la computadora externa está respondiend
 
 ---
 
-## 🛑 CÓMO APAGAR EL SERVIDOR
+## CÓMO APAGAR EL SERVIDOR
 Cuando termines de usarlo y quieras apagar el sistema:
 1. Haz clic en la ventana de la terminal negra donde está corriendo el servidor.
 2. Presiona las teclas **`Ctrl + C`** al mismo tiempo.
