@@ -60,6 +60,9 @@ Las librerías del proyecto NO vienen incluidas en la descarga porque son pesada
 npm install
 ```
 
+```bash
+npm run format
+```
 _Espera un par de segundos. Aparecerán muchas líneas de texto en la terminal y una barra de carga. Sabrás que terminó cuando la terminal te deje escribir comandos otra vez._
 
 ---
