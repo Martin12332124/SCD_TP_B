@@ -77,6 +77,39 @@ db.exec(`
   );
 `);
 
+// ── Migración: agregar estado 'Cerrado' al CHECK si la BD ya existía ──────────
+// SQLite no soporta ALTER COLUMN, por lo que se usa el patrón rename+recreate.
+// Se detecta si la definición actual ya incluye 'Cerrado' para no migrar dos veces.
+{
+  const tableSql = db.prepare(
+    "SELECT sql FROM sqlite_master WHERE type='table' AND name='pedidos'"
+  ).get();
+
+  if (tableSql && !tableSql.sql.includes("'Cerrado'")) {
+    console.log('[DB] 🔄 Migrando tabla pedidos: agregando estado Cerrado...');
+    db.exec(`
+      PRAGMA foreign_keys = OFF;
+
+      CREATE TABLE pedidos_v2 (
+        id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        mesa_id         INTEGER NOT NULL,
+        estado          TEXT    NOT NULL DEFAULT 'Pedido en Espera'
+                        CHECK(estado IN ('Pedido en Espera', 'En Cocina', 'Pedido Servido', 'Anulado', 'Cerrado')),
+        en_cocina_desde DATETIME,
+        created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (mesa_id) REFERENCES mesas(id)
+      );
+
+      INSERT INTO pedidos_v2 SELECT * FROM pedidos;
+      DROP TABLE pedidos;
+      ALTER TABLE pedidos_v2 RENAME TO pedidos;
+
+      PRAGMA foreign_keys = ON;
+    `);
+    console.log('[DB] ✅ Migración de pedidos completada.');
+  }
+}
+
 // Registro inmutable de ventas del día (ledger acumulativo)
 // No usa FOREIGN KEY para que los registros persistan aunque el pedido cambie de estado.
 db.exec(`
