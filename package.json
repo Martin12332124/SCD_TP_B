@@ -20,6 +20,7 @@
   },
   "homepage": "https://github.com/Martin12332124/SCD_TP_F#readme",
   "dependencies": {
+    "better-sqlite3": "^13.0.3",
     "express": "^5.2.1",
     "socket.io": "^4.8.3"
   },
