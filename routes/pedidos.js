@@ -8,6 +8,7 @@ const TRANSICIONES_VALIDAS = {
   'En Cocina':        ['Pedido Servido'],
   'Pedido Servido':   [],
   'Anulado':          [],
+  'Cerrado':          [],
 };
 
 /**

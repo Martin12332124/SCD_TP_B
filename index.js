@@ -10,6 +10,7 @@ const menuRouter         = require('./routes/menu');
 const modificadoresRouter = require('./routes/modificadores');
 const ingredientesRouter  = require('./routes/ingredientes');
 const pedidosRouter       = require('./routes/pedidos');
+const ventasRouter        = require('./routes/ventas');
 
 const app    = express();
 const server = http.createServer(app);
@@ -33,6 +34,7 @@ app.use('/api/menu',          menuRouter);
 app.use('/api/modificadores', modificadoresRouter);
 app.use('/api/ingredientes',  ingredientesRouter);
 app.use('/api/pedidos',       pedidosRouter);
+app.use('/api/ventas',        ventasRouter);
 
 app.get('/', (req, res) => {
   res.json({ mensaje: 'Servidor del Sistema de Pedidos del Restaurante operativo.' });

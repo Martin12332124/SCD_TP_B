@@ -23,7 +23,7 @@ router.get('/:id/cuenta', (req, res) => {
     const mesa = db.prepare('SELECT * FROM mesas WHERE id = ?').get(mesaId);
     if (!mesa) return res.status(404).json({ error: 'Mesa no encontrada.' });
 
-    // Traer todos los pedidos relevantes (excluye Anulados) con sus ítems
+    // Traer todos los pedidos relevantes (excluye Anulados y Cerrados) con sus ítems
     const filas = db.prepare(`
       SELECT p.id, p.estado, p.created_at,
              pi.id AS item_id, pi.menu_item_id, pi.cantidad, pi.notas,
@@ -31,7 +31,7 @@ router.get('/:id/cuenta', (req, res) => {
       FROM pedidos p
       LEFT JOIN pedido_items pi ON pi.pedido_id = p.id
       LEFT JOIN menu_items mi ON pi.menu_item_id = mi.id
-      WHERE p.mesa_id = ? AND p.estado != 'Anulado'
+      WHERE p.mesa_id = ? AND p.estado NOT IN ('Anulado', 'Cerrado')
       ORDER BY p.created_at ASC, pi.id ASC
     `).all(mesaId);
 
@@ -97,17 +97,68 @@ router.post('/:id/cerrar', (req, res) => {
       });
     }
 
-    // Liberar la mesa
-    db.prepare("UPDATE mesas SET estado = 'libre' WHERE id = ?").run(mesaId);
+    // ── Registrar ventas en ventas_dia (anti-duplicado por pedido_id) ──
+    // Obtener los pedidos 'Pedido Servido' que aún no fueron volcados a ventas_dia
+    const pedidosServidos = db.prepare(`
+      SELECT p.id AS pedido_id
+      FROM pedidos p
+      WHERE p.mesa_id = ?
+        AND p.estado = 'Pedido Servido'
+        AND p.id NOT IN (SELECT DISTINCT pedido_id FROM ventas_dia WHERE pedido_id IS NOT NULL)
+    `).all(mesaId);
+
+    const insVenta = db.prepare(`
+      INSERT INTO ventas_dia (fecha, mesa_numero, menu_item_id, nombre_item, categoria, precio, cantidad, notas, pedido_id)
+      VALUES (date('now'), ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const cerrarMesaTransaction = db.transaction(() => {
+      // Volcar ítems a ventas_dia
+      pedidosServidos.forEach(({ pedido_id }) => {
+        const items = db.prepare(`
+          SELECT pi.menu_item_id, mi.nombre, c.nombre AS categoria, mi.precio, pi.cantidad, pi.notas
+          FROM pedido_items pi
+          JOIN menu_items mi ON pi.menu_item_id = mi.id
+          LEFT JOIN categorias c ON mi.categoria_id = c.id
+          WHERE pi.pedido_id = ?
+        `).all(pedido_id);
+
+        items.forEach((item) => {
+          insVenta.run(
+            mesa.numero,
+            item.menu_item_id,
+            item.nombre,
+            item.categoria || null,
+            item.precio,
+            item.cantidad,
+            item.notas || null,
+            pedido_id
+          );
+        });
+
+        // Pasar el pedido a estado 'Cerrado' para que desaparezca de la vista de mesa
+        db.prepare("UPDATE pedidos SET estado = 'Cerrado' WHERE id = ?").run(pedido_id);
+      });
+
+      // Liberar la mesa
+      db.prepare("UPDATE mesas SET estado = 'libre' WHERE id = ?").run(mesaId);
+    });
+
+    cerrarMesaTransaction();
 
     // Emitir actualización de mesas a todos los clientes
     const io = req.app.get('io');
     if (io) {
       const mesasActualizadas = db.prepare('SELECT * FROM mesas ORDER BY numero ASC').all();
       io.emit('estado_mesas', mesasActualizadas);
+      // Notificar que las ventas del día se actualizaron
+      io.emit('ventas_actualizadas', { mesa_numero: mesa.numero });
     }
 
-    res.json({ mensaje: `Mesa ${mesa.numero} cerrada y liberada correctamente.` });
+    res.json({
+      mensaje: `Mesa ${mesa.numero} cerrada y liberada correctamente.`,
+      pedidos_cerrados: pedidosServidos.length,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

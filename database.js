@@ -70,10 +70,28 @@ db.exec(`
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     mesa_id         INTEGER NOT NULL,
     estado          TEXT    NOT NULL DEFAULT 'Pedido en Espera'
-                    CHECK(estado IN ('Pedido en Espera', 'En Cocina', 'Pedido Servido', 'Anulado')),
+                    CHECK(estado IN ('Pedido en Espera', 'En Cocina', 'Pedido Servido', 'Anulado', 'Cerrado')),
     en_cocina_desde DATETIME,
     created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (mesa_id) REFERENCES mesas(id)
+  );
+`);
+
+// Registro inmutable de ventas del día (ledger acumulativo)
+// No usa FOREIGN KEY para que los registros persistan aunque el pedido cambie de estado.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS ventas_dia (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    fecha        TEXT    NOT NULL DEFAULT (date('now')),
+    mesa_numero  INTEGER NOT NULL,
+    menu_item_id INTEGER NOT NULL,
+    nombre_item  TEXT    NOT NULL,
+    categoria    TEXT,
+    precio       REAL    NOT NULL,
+    cantidad     INTEGER NOT NULL DEFAULT 1,
+    notas        TEXT,
+    pedido_id    INTEGER,
+    created_at   DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 `);
 
