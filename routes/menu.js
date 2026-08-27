@@ -51,7 +51,7 @@ router.get('/completo', (req, res) => {
 
     const resultado = items.map((item) => ({
       ...item,
-      modificadores: getMods.all(item.id),
+      modificadores: getMods.all(item.id)
     }));
 
     res.json(resultado);
@@ -120,7 +120,9 @@ router.post('/', (req, res) => {
   }
   try {
     const resultado = db
-      .prepare('INSERT INTO menu_items (nombre, descripcion, precio, categoria_id) VALUES (?, ?, ?, ?)')
+      .prepare(
+        'INSERT INTO menu_items (nombre, descripcion, precio, categoria_id) VALUES (?, ?, ?, ?)'
+      )
       .run(nombre, descripcion || null, parseFloat(precio), parseInt(categoria_id));
     res.status(201).json({ id: resultado.lastInsertRowid, nombre, precio, categoria_id });
   } catch (err) {

@@ -30,7 +30,6 @@ if (modo === 'full') {
   fs.unlinkSync(DB_PATH);
   console.log('✅ restaurante.db eliminado.');
   console.log('   La próxima vez que levantes el servidor se recreará con los datos de ejemplo.\n');
-
 } else {
   // ── Modo SOFT: limpiar pedidos y liberar mesas, conservar menú e ingredientes ─
   console.log('\n🧹 Modo SOFT: limpiando pedidos y liberando mesas...');
@@ -54,7 +53,9 @@ if (modo === 'full') {
     console.log(`   · mesas:         ${mesas.changes} mesa(s) liberadas`);
 
     // 5. Resetear autoincrement de pedidos y ventas
-    db.prepare("DELETE FROM sqlite_sequence WHERE name IN ('pedidos','pedido_items','ventas_dia')").run();
+    db.prepare(
+      "DELETE FROM sqlite_sequence WHERE name IN ('pedidos','pedido_items','ventas_dia')"
+    ).run();
   });
 
   resetSoft();

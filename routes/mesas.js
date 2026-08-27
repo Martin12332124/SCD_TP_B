@@ -24,7 +24,9 @@ router.get('/:id/cuenta', (req, res) => {
     if (!mesa) return res.status(404).json({ error: 'Mesa no encontrada.' });
 
     // Traer todos los pedidos relevantes (excluye Anulados y Cerrados) con sus ítems
-    const filas = db.prepare(`
+    const filas = db
+      .prepare(
+        `
       SELECT p.id, p.estado, p.created_at,
              pi.id AS item_id, pi.menu_item_id, pi.cantidad, pi.notas,
              mi.nombre AS nombre_item, mi.precio
@@ -33,30 +35,32 @@ router.get('/:id/cuenta', (req, res) => {
       LEFT JOIN menu_items mi ON pi.menu_item_id = mi.id
       WHERE p.mesa_id = ? AND p.estado NOT IN ('Anulado', 'Cerrado')
       ORDER BY p.created_at ASC, pi.id ASC
-    `).all(mesaId);
+    `
+      )
+      .all(mesaId);
 
     // Agrupar por pedido
     const pedidosMapa = new Map();
     filas.forEach((fila) => {
       if (!pedidosMapa.has(fila.id)) {
         pedidosMapa.set(fila.id, {
-          id:         fila.id,
-          estado:     fila.estado,
+          id: fila.id,
+          estado: fila.estado,
           created_at: fila.created_at,
-          items:      [],
-          subtotal:   0,
+          items: [],
+          subtotal: 0
         });
       }
       if (fila.item_id) {
         const subtotalItem = (fila.precio || 0) * fila.cantidad;
         pedidosMapa.get(fila.id).items.push({
-          id:          fila.item_id,
+          id: fila.item_id,
           menu_item_id: fila.menu_item_id,
-          nombre:      fila.nombre_item,
-          precio:      fila.precio,
-          cantidad:    fila.cantidad,
-          notas:       fila.notas,
-          subtotal:    subtotalItem,
+          nombre: fila.nombre_item,
+          precio: fila.precio,
+          cantidad: fila.cantidad,
+          notas: fila.notas,
+          subtotal: subtotalItem
         });
         pedidosMapa.get(fila.id).subtotal += subtotalItem;
       }
@@ -93,19 +97,23 @@ router.post('/:id/cerrar', (req, res) => {
 
     if (pedidosPendientes > 0) {
       return res.status(422).json({
-        error: `No se puede cerrar la mesa: hay ${pedidosPendientes} pedido(s) aún en preparación o en espera.`,
+        error: `No se puede cerrar la mesa: hay ${pedidosPendientes} pedido(s) aún en preparación o en espera.`
       });
     }
 
     // ── Registrar ventas en ventas_dia (anti-duplicado por pedido_id) ──
     // Obtener los pedidos 'Pedido Servido' que aún no fueron volcados a ventas_dia
-    const pedidosServidos = db.prepare(`
+    const pedidosServidos = db
+      .prepare(
+        `
       SELECT p.id AS pedido_id
       FROM pedidos p
       WHERE p.mesa_id = ?
         AND p.estado = 'Pedido Servido'
         AND p.id NOT IN (SELECT DISTINCT pedido_id FROM ventas_dia WHERE pedido_id IS NOT NULL)
-    `).all(mesaId);
+    `
+      )
+      .all(mesaId);
 
     const insVenta = db.prepare(`
       INSERT INTO ventas_dia (fecha, mesa_numero, menu_item_id, nombre_item, categoria, precio, cantidad, notas, pedido_id)
@@ -115,13 +123,17 @@ router.post('/:id/cerrar', (req, res) => {
     const cerrarMesaTransaction = db.transaction(() => {
       // Volcar ítems a ventas_dia
       pedidosServidos.forEach(({ pedido_id }) => {
-        const items = db.prepare(`
+        const items = db
+          .prepare(
+            `
           SELECT pi.menu_item_id, mi.nombre, c.nombre AS categoria, mi.precio, pi.cantidad, pi.notas
           FROM pedido_items pi
           JOIN menu_items mi ON pi.menu_item_id = mi.id
           LEFT JOIN categorias c ON mi.categoria_id = c.id
           WHERE pi.pedido_id = ?
-        `).all(pedido_id);
+        `
+          )
+          .all(pedido_id);
 
         items.forEach((item) => {
           insVenta.run(
@@ -157,7 +169,7 @@ router.post('/:id/cerrar', (req, res) => {
 
     res.json({
       mensaje: `Mesa ${mesa.numero} cerrada y liberada correctamente.`,
-      pedidos_cerrados: pedidosServidos.length,
+      pedidos_cerrados: pedidosServidos.length
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -187,7 +199,9 @@ router.post('/', (req, res) => {
   }
   try {
     const resultado = db.prepare('INSERT INTO mesas (numero) VALUES (?)').run(parseInt(numero));
-    res.status(201).json({ id: resultado.lastInsertRowid, numero: parseInt(numero), estado: 'libre' });
+    res
+      .status(201)
+      .json({ id: resultado.lastInsertRowid, numero: parseInt(numero), estado: 'libre' });
   } catch (err) {
     if (err.message.includes('UNIQUE')) {
       return res.status(409).json({ error: `Ya existe la Mesa ${numero}.` });
@@ -204,11 +218,13 @@ router.put('/:id', (req, res) => {
   const ESTADOS_VALIDOS = ['libre', 'ocupada'];
   if (!estado || !ESTADOS_VALIDOS.includes(estado)) {
     return res.status(400).json({
-      error: `Estado inválido. Valores permitidos: ${ESTADOS_VALIDOS.join(', ')}.`,
+      error: `Estado inválido. Valores permitidos: ${ESTADOS_VALIDOS.join(', ')}.`
     });
   }
   try {
-    const resultado = db.prepare('UPDATE mesas SET estado = ? WHERE id = ?').run(estado, req.params.id);
+    const resultado = db
+      .prepare('UPDATE mesas SET estado = ? WHERE id = ?')
+      .run(estado, req.params.id);
     if (resultado.changes === 0) return res.status(404).json({ error: 'Mesa no encontrada.' });
     res.json({ mensaje: 'Mesa actualizada correctamente.' });
   } catch (err) {

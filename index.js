@@ -5,18 +5,20 @@ const cors = require('cors');
 
 const db = require('./database');
 
-const mesasRouter        = require('./routes/mesas');
-const menuRouter         = require('./routes/menu');
+const mesasRouter = require('./routes/mesas');
+const menuRouter = require('./routes/menu');
 const modificadoresRouter = require('./routes/modificadores');
-const ingredientesRouter  = require('./routes/ingredientes');
-const pedidosRouter       = require('./routes/pedidos');
-const ventasRouter        = require('./routes/ventas');
+const ingredientesRouter = require('./routes/ingredientes');
+const pedidosRouter = require('./routes/pedidos');
+const ventasRouter = require('./routes/ventas');
+const authRouter = require('./routes/auth');
+const { verificarToken } = require('./middleware/auth');
 
-const app    = express();
+const app = express();
 const server = http.createServer(app);
 
 const io = new Server(server, {
-  cors: { origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
+  cors: { origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE'] }
 });
 
 // Hacer io accesible a los routers para emitir eventos desde los handlers REST
@@ -29,12 +31,19 @@ app.use(express.json());
 // ============================================================
 // RUTAS REST
 // ============================================================
-app.use('/api/mesas',         mesasRouter);
-app.use('/api/menu',          menuRouter);
+
+// Ruta pública: auth (login no requiere token)
+app.use('/api/auth', authRouter);
+
+// Middleware de autenticación — protege todas las rutas que siguen
+app.use(verificarToken);
+
+app.use('/api/mesas', mesasRouter);
+app.use('/api/menu', menuRouter);
 app.use('/api/modificadores', modificadoresRouter);
-app.use('/api/ingredientes',  ingredientesRouter);
-app.use('/api/pedidos',       pedidosRouter);
-app.use('/api/ventas',        ventasRouter);
+app.use('/api/ingredientes', ingredientesRouter);
+app.use('/api/pedidos', pedidosRouter);
+app.use('/api/ventas', ventasRouter);
 
 app.get('/', (req, res) => {
   res.json({ mensaje: 'Servidor del Sistema de Pedidos del Restaurante operativo.' });

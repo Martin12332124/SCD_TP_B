@@ -16,7 +16,9 @@ router.get('/dia', (req, res) => {
     }
 
     // Detalle completo de ítems vendidos en el día
-    const detalle = db.prepare(`
+    const detalle = db
+      .prepare(
+        `
       SELECT
         v.id,
         v.mesa_numero,
@@ -32,7 +34,9 @@ router.get('/dia', (req, res) => {
       FROM ventas_dia v
       WHERE v.fecha = ?
       ORDER BY v.created_at ASC
-    `).all(fecha);
+    `
+      )
+      .all(fecha);
 
     // Agrupado por categoría
     const porCategoriaMap = new Map();
@@ -44,9 +48,9 @@ router.get('/dia', (req, res) => {
       if (!porCategoriaMap.has(cat)) {
         porCategoriaMap.set(cat, { categoria: cat, cantidad: 0, subtotal: 0 });
       }
-      porCategoriaMap.get(cat).cantidad  += item.cantidad;
-      porCategoriaMap.get(cat).subtotal  += item.subtotal;
-      totalGeneral       += item.subtotal;
+      porCategoriaMap.get(cat).cantidad += item.cantidad;
+      porCategoriaMap.get(cat).subtotal += item.subtotal;
+      totalGeneral += item.subtotal;
       totalItemsVendidos += item.cantidad;
     });
 
@@ -54,10 +58,10 @@ router.get('/dia', (req, res) => {
 
     res.json({
       fecha,
-      total_general:        totalGeneral,
+      total_general: totalGeneral,
       total_items_vendidos: totalItemsVendidos,
-      por_categoria:        porCategoria,
-      detalle,
+      por_categoria: porCategoria,
+      detalle
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

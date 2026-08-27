@@ -5,10 +5,10 @@ const db = require('../database');
 // Máquina de estados unidireccional (según documento de definición)
 const TRANSICIONES_VALIDAS = {
   'Pedido en Espera': ['En Cocina', 'Anulado'],
-  'En Cocina':        ['Pedido Servido'],
-  'Pedido Servido':   [],
-  'Anulado':          [],
-  'Cerrado':          [],
+  'En Cocina': ['Pedido Servido'],
+  'Pedido Servido': [],
+  Anulado: [],
+  Cerrado: []
 };
 
 /**
@@ -16,7 +16,9 @@ const TRANSICIONES_VALIDAS = {
  * Agrupa por pedido para evitar N+1 queries.
  */
 function cargarPedidosConItems(condicionSQL = "p.estado IN ('Pedido en Espera', 'En Cocina')") {
-  const filas = db.prepare(`
+  const filas = db
+    .prepare(
+      `
     SELECT p.id, p.mesa_id, m.numero AS numero_mesa, p.estado, p.en_cocina_desde, p.created_at,
            pi.id AS item_id, pi.menu_item_id, pi.cantidad, pi.notas,
            mi.nombre AS nombre_item, mi.precio
@@ -26,29 +28,31 @@ function cargarPedidosConItems(condicionSQL = "p.estado IN ('Pedido en Espera', 
     LEFT JOIN menu_items mi ON pi.menu_item_id = mi.id
     WHERE ${condicionSQL}
     ORDER BY p.created_at ASC, pi.id ASC
-  `).all();
+  `
+    )
+    .all();
 
   const mapa = new Map();
   filas.forEach((fila) => {
     if (!mapa.has(fila.id)) {
       mapa.set(fila.id, {
-        id:              fila.id,
-        mesa_id:         fila.mesa_id,
-        numero_mesa:     fila.numero_mesa,
-        estado:          fila.estado,
+        id: fila.id,
+        mesa_id: fila.mesa_id,
+        numero_mesa: fila.numero_mesa,
+        estado: fila.estado,
         en_cocina_desde: fila.en_cocina_desde,
-        created_at:      fila.created_at,
-        items:           [],
+        created_at: fila.created_at,
+        items: []
       });
     }
     if (fila.item_id) {
       mapa.get(fila.id).items.push({
-        id:          fila.item_id,
+        id: fila.item_id,
         menu_item_id: fila.menu_item_id,
-        nombre:      fila.nombre_item,
-        precio:      fila.precio,
-        cantidad:    fila.cantidad,
-        notas:       fila.notas,
+        nombre: fila.nombre_item,
+        precio: fila.precio,
+        cantidad: fila.cantidad,
+        notas: fila.notas
       });
     }
   });
@@ -98,18 +102,22 @@ router.post('/', (req, res) => {
     if (!item.menu_item_id || !item.cantidad || item.cantidad < 1) {
       return res.status(400).json({ error: 'Cada ítem debe tener menu_item_id y cantidad >= 1.' });
     }
-    const menuItem = db.prepare('SELECT id FROM menu_items WHERE id = ? AND activo = 1').get(item.menu_item_id);
+    const menuItem = db
+      .prepare('SELECT id FROM menu_items WHERE id = ? AND activo = 1')
+      .get(item.menu_item_id);
     if (!menuItem) {
-      return res.status(400).json({ error: `Ítem de menú con id ${item.menu_item_id} no existe o está inactivo.` });
+      return res
+        .status(400)
+        .json({ error: `Ítem de menú con id ${item.menu_item_id} no existe o está inactivo.` });
     }
   }
 
   try {
     let pedidoId;
     const crearPedido = db.transaction(() => {
-      const resultado = db.prepare(
-        "INSERT INTO pedidos (mesa_id, estado) VALUES (?, 'Pedido en Espera')"
-      ).run(mesa_id);
+      const resultado = db
+        .prepare("INSERT INTO pedidos (mesa_id, estado) VALUES (?, 'Pedido en Espera')")
+        .run(mesa_id);
       pedidoId = resultado.lastInsertRowid;
 
       const insItem = db.prepare(
@@ -150,7 +158,7 @@ router.put('/:id/estado', (req, res) => {
   const transicionesPermitidas = TRANSICIONES_VALIDAS[pedido.estado] || [];
   if (!transicionesPermitidas.includes(nuevoEstado)) {
     return res.status(422).json({
-      error: `Transición inválida: "${pedido.estado}" → "${nuevoEstado}". Permitidas: ${transicionesPermitidas.join(', ') || 'ninguna (estado terminal)'}`,
+      error: `Transición inválida: "${pedido.estado}" → "${nuevoEstado}". Permitidas: ${transicionesPermitidas.join(', ') || 'ninguna (estado terminal)'}`
     });
   }
 
@@ -158,8 +166,11 @@ router.put('/:id/estado', (req, res) => {
     const ahora = new Date().toISOString();
     const enCocinaDesde = nuevoEstado === 'En Cocina' ? ahora : pedido.en_cocina_desde;
 
-    db.prepare('UPDATE pedidos SET estado = ?, en_cocina_desde = ? WHERE id = ?')
-      .run(nuevoEstado, enCocinaDesde, pedidoId);
+    db.prepare('UPDATE pedidos SET estado = ?, en_cocina_desde = ? WHERE id = ?').run(
+      nuevoEstado,
+      enCocinaDesde,
+      pedidoId
+    );
 
     // Sincronizar estado de la mesa
     const mesa = db.prepare('SELECT numero FROM mesas WHERE id = ?').get(pedido.mesa_id);
@@ -184,12 +195,12 @@ router.put('/:id/estado', (req, res) => {
     const io = req.app.get('io');
     if (io) {
       const payload = {
-        pedido_id:       pedidoId,
-        mesa_id:         pedido.mesa_id,
-        mesa:            `Mesa ${mesa.numero}`,
-        numero_mesa:     mesa.numero,
-        estado:          nuevoEstado,
-        en_cocina_desde: enCocinaDesde,
+        pedido_id: pedidoId,
+        mesa_id: pedido.mesa_id,
+        mesa: `Mesa ${mesa.numero}`,
+        numero_mesa: mesa.numero,
+        estado: nuevoEstado,
+        en_cocina_desde: enCocinaDesde
       };
       io.emit('cambio_estado_pedido', payload);
 
@@ -215,7 +226,7 @@ router.delete('/:id', (req, res) => {
 
   if (pedido.estado !== 'Pedido en Espera') {
     return res.status(422).json({
-      error: `Solo se pueden anular pedidos en estado "Pedido en Espera". Estado actual: "${pedido.estado}".`,
+      error: `Solo se pueden anular pedidos en estado "Pedido en Espera". Estado actual: "${pedido.estado}".`
     });
   }
 
@@ -227,11 +238,11 @@ router.delete('/:id', (req, res) => {
     const mesa = db.prepare('SELECT numero FROM mesas WHERE id = ?').get(pedido.mesa_id);
     if (io) {
       io.emit('cambio_estado_pedido', {
-        pedido_id:   pedidoId,
-        mesa_id:     pedido.mesa_id,
-        mesa:        `Mesa ${mesa.numero}`,
+        pedido_id: pedidoId,
+        mesa_id: pedido.mesa_id,
+        mesa: `Mesa ${mesa.numero}`,
         numero_mesa: mesa.numero,
-        estado:      'Anulado',
+        estado: 'Anulado'
       });
     }
 
