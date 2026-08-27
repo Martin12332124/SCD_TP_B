@@ -1,6 +1,7 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const cors = require('cors');
 
 const db = require('./database');
 
@@ -20,6 +21,8 @@ const io = new Server(server, {
 // Hacer io accesible a los routers para emitir eventos desde los handlers REST
 app.set('io', io);
 
+// Habilitar CORS para todas las rutas REST (necesario para fetch desde el frontend en otro puerto)
+app.use(cors());
 app.use(express.json());
 
 // ============================================================

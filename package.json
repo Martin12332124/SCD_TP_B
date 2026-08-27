@@ -4,6 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "format": "prettier --write \"**/*.{js,json,md}\" --ignore-path .gitignore"
   },
@@ -21,6 +23,7 @@
   "homepage": "https://github.com/Martin12332124/SCD_TP_F#readme",
   "dependencies": {
     "better-sqlite3": "^13.0.3",
+    "cors": "2.8.6",
     "express": "^5.2.1",
     "socket.io": "^4.8.3"
   },

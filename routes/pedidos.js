@@ -163,10 +163,21 @@ router.put('/:id/estado', (req, res) => {
     // Sincronizar estado de la mesa
     const mesa = db.prepare('SELECT numero FROM mesas WHERE id = ?').get(pedido.mesa_id);
     if (nuevoEstado === 'En Cocina') {
+      // Al iniciar la preparación, la mesa queda ocupada
       db.prepare("UPDATE mesas SET estado = 'ocupada' WHERE id = ?").run(pedido.mesa_id);
-    } else if (nuevoEstado === 'Pedido Servido' || nuevoEstado === 'Anulado') {
-      db.prepare("UPDATE mesas SET estado = 'libre' WHERE id = ?").run(pedido.mesa_id);
+    } else if (nuevoEstado === 'Anulado') {
+      // Solo liberar la mesa si no quedan pedidos activos en ella
+      const pedidosActivos = db
+        .prepare(
+          "SELECT COUNT(*) as c FROM pedidos WHERE mesa_id = ? AND id != ? AND estado IN ('Pedido en Espera', 'En Cocina', 'Pedido Servido')"
+        )
+        .get(pedido.mesa_id, pedidoId).c;
+      if (pedidosActivos === 0) {
+        db.prepare("UPDATE mesas SET estado = 'libre' WHERE id = ?").run(pedido.mesa_id);
+      }
     }
+    // Nota: 'Pedido Servido' NO libera la mesa.
+    // La mesa se libera cuando el mozo cierra la cuenta (POST /api/mesas/:id/cerrar).
 
     // Emitir eventos WebSocket
     const io = req.app.get('io');
