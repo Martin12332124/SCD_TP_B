@@ -1,74 +1,85 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const cors = require('cors');
+
+const db = require('./database');
+
+const mesasRouter = require('./routes/mesas');
+const menuRouter = require('./routes/menu');
+const modificadoresRouter = require('./routes/modificadores');
+const ingredientesRouter = require('./routes/ingredientes');
+const pedidosRouter = require('./routes/pedidos');
+const ventasRouter = require('./routes/ventas');
+const authRouter = require('./routes/auth');
+const { verificarToken } = require('./middleware/auth');
 
 const app = express();
 const server = http.createServer(app);
 
-// Configuración de Socket.io (permite conexiones desde tu Frontend)
 const io = new Server(server, {
-  cors: {
-    origin: '*',
-    methods: ['GET', 'POST']
-  }
+  cors: { origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE'] }
 });
 
-// Middleware para entender formato JSON si envías datos por HTTP
+// Hacer io accesible a los routers para emitir eventos desde los handlers REST
+app.set('io', io);
+
+// Habilitar CORS para todas las rutas REST (necesario para fetch desde el frontend en otro puerto)
+app.use(cors());
 app.use(express.json());
 
-// Ruta básica de prueba adaptada
+// ============================================================
+// RUTAS REST
+// ============================================================
+
+// Ruta pública: auth (login no requiere token)
+app.use('/api/auth', authRouter);
+
+// Middleware de autenticación — protege todas las rutas que siguen
+app.use(verificarToken);
+
+app.use('/api/mesas', mesasRouter);
+app.use('/api/menu', menuRouter);
+app.use('/api/modificadores', modificadoresRouter);
+app.use('/api/ingredientes', ingredientesRouter);
+app.use('/api/pedidos', pedidosRouter);
+app.use('/api/ventas', ventasRouter);
+
 app.get('/', (req, res) => {
-  res.send('Servidor del Sistema de Pedidos del Restaurante operativo.');
+  res.json({ mensaje: 'Servidor del Sistema de Pedidos del Restaurante operativo.' });
 });
 
-// Lógica de comunicación en tiempo real con Socket.io
+// ============================================================
+// WEBSOCKETS
+// ============================================================
 io.on('connection', (socket) => {
-  console.log(`[SOCKET] Nuevo cliente conectado. ID: ${socket.id}`);
+  console.log(`[SOCKET] Cliente conectado: ${socket.id}`);
 
-  // Recibir actualización de pedido desde el frontend
-  socket.on('actualizar_pedido', (datos) => {
-    console.log('\n[SOCKET] Intento de actualización de pedido:', datos);
+  // Enviar estado actual de mesas al nuevo cliente
+  try {
+    const mesas = db.prepare('SELECT * FROM mesas ORDER BY numero ASC').all();
+    socket.emit('estado_mesas', mesas);
+  } catch (err) {
+    console.error('[SOCKET] Error al emitir mesas iniciales:', err.message);
+  }
 
-    // ==========================================
-    // VALIDACIÓN DE DATOS DE ENTRADA (BACKEND)
-    // ==========================================
-
-    // 1. Validar que el paquete de datos no llegue vacío
-    if (!datos || !datos.mesa || !datos.estado) {
-      console.error('❌ RECHAZADO: Estructura de datos incompleta.');
-      return; // Detiene el proceso y no emite nada
-    }
-
-    // 2. Validar que el estado del pedido sea estrictamente uno de los permitidos
-    const ESTADOS_VALIDOS = ['Recibido 📝', 'En Cocina 🍳', 'Listo 🍽️'];
-    if (!ESTADOS_VALIDOS.includes(datos.estado)) {
-      console.error(`❌ RECHAZADO: El estado "${datos.estado}" no está permitido en el negocio.`);
-      return; // Detiene el proceso
-    }
-
-    // 3. Validar que el número de mesa sea coherente
-    // Extraemos el número limpiando el texto "Mesa " que manda el frontend
-    const numeroMesa = datos.mesa.replace('Mesa ', '');
-    if (isNaN(numeroMesa) || parseInt(numeroMesa) <= 0) {
-      console.error(`❌ RECHAZADO: "${datos.mesa}" no corresponde a un número de mesa válido.`);
-      return; // Detiene el proceso
-    }
-
-    // ==========================================
-    // PROCESAMIENTO (Si pasó todas las validaciones)
-    // ==========================================
-    console.log(`✅ VALIDADO EXITOSAMENTE: ${datos.mesa} -> ${datos.estado}`);
-
-    // Enviamos los datos limpios a TODOS los clientes conectados (Mozo, Cocina, Pantallas)
-    io.emit('cambio_estado_pedido', datos);
-  });
+  // Enviar pedidos activos al nuevo cliente (para que el KDS sincronice al conectarse)
+  try {
+    const { cargarPedidosConItems } = require('./routes/pedidos');
+    const pedidosActivos = cargarPedidosConItems();
+    socket.emit('pedidos_activos', pedidosActivos);
+  } catch (err) {
+    console.error('[SOCKET] Error al emitir pedidos activos:', err.message);
+  }
 
   socket.on('disconnect', () => {
-    console.log(`[SOCKET] Cliente desconectado. ID: ${socket.id}`);
+    console.log(`[SOCKET] Cliente desconectado: ${socket.id}`);
   });
 });
 
-// Iniciar el servidor en el puerto 3000
+// ============================================================
+// INICIAR SERVIDOR
+// ============================================================
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`=============================================`);
