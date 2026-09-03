@@ -17,6 +17,15 @@ Antes de hacer nada, la computadora externa necesita tener instalado **Node.js**
 
 ---
 
+## PARA EL EQUIPO
+
+Se requiere al nuestro equipo la implementación de un formato el código después de terminar de modificarlo
+```bash
+npm run format
+```
+
+---
+
 ## PASO A PASO PARA INSTALAR EL PROYECTO
 
 Sigue estos pasos en orden estricto. No te saltes ninguno.
@@ -58,10 +67,6 @@ Las librerías del proyecto NO vienen incluidas en la descarga porque son pesada
 
 ```bash
 npm install
-```
-
-```bash
-npm run format
 ```
 
 _Espera un par de segundos. Aparecerán muchas líneas de texto en la terminal y una barra de carga. Sabrás que terminó cuando la terminal te deje escribir comandos otra vez._
