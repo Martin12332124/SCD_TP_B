@@ -1,6 +1,78 @@
+# Sistema de Pedidos para Restaurante (POS + KDS)
+
+## Descripción del sistema
+
+El Sistema de Pedidos para Restaurante (POS + KDS) resuelve el problema de coordinación entre la toma de pedidos en el salón y su preparación en cocina. En muchos restaurantes ese proceso depende de comandas en papel o de sistemas que no se actualizan en tiempo real, lo que provoca pedidos traspapelados, platos que se preparan mal o que llegan tarde a la mesa. El sistema conecta un Punto de Venta (POS), donde el mesero toma la comanda, con una Pantalla de Cocina (KDS), donde el personal de cocina la recibe y actualiza su estado a medida que avanza la preparación, todo sincronizado en tiempo real dentro de la red local del restaurante.
+
+Un elemento central del diseño es el paso de validación obligatoria de la comanda con el cliente antes de enviarla a cocina: el mesero confirma cada ítem, cantidad y modificador con el comensal antes de que el pedido salga hacia la cocina, para eliminar el error humano en el origen del proceso en vez de corregirlo después, cuando ya es más costoso hacerlo.
+
+El sistema sirve a cuatro roles dentro del restaurante: el Mesero, que toma los pedidos, gestiona las mesas y cierra las cuentas; el Cocinero, que recibe y prepara las comandas desde el KDS; el JefeDeCocina, que supervisa la cocina y el inventario de ingredientes; y el Administrador, que gestiona el catálogo de menú, los usuarios del sistema y el registro de ventas del local.
+
+## Historias de Usuario
+
+Todas las historias están registradas como GitHub Issues en el repositorio frontend.
+
+Las historias de usuario viven en el repositorio frontend: https://github.com/Martin12332124/SCD_TP_F/issues
+
+| ID | Nombre | Issue |
+|----|--------|-------|
+| US-01 | Selector de variantes-bebida | #22 |
+| US-02 | Descripción compacta del pedido | #23 |
+| US-03 | Agregacion de notas a los pedidos | #24 |
+| US-04 | Disponibilidad en los menus | #32 |
+| US-05 | Posibilidad de cambio de clientes-mesas | #33 |
+| US-06 | Actualización de pedidos en la cocina | #25 |
+| US-07 | Registrar precio al crear o editar | #26 |
+| US-08 | Ver mapa de mesas | #27 |
+| US-09 | Abrir o cerrar una mesa | #28 |
+| US-10 | Limpieza al servir un pedido | #30 |
+
+## Requisitos Extrafuncionales
+
+Ver: [ReqExtrafuncionales.md](./ReqExtrafuncionales.md) — 16 requisitos clasificados, 5 de prioridad Alta.
+
+## Entidades del Dominio
+
+Ver: [DominioEntidades.md](./DominioEntidades.md) — 10 entidades, diagrama ER y máquina de estados del Pedido.
+
+## Mockups
+
+<!-- TODO: reemplazar por las rutas reales una vez subidas las imágenes -->
+
+| Mockup | Historia de usuario relacionada |
+|--------|----------------------------------|
+| `docs/mockups/us-01.png` | US-01 |
+| `docs/mockups/us-02.png` | US-02 |
+| `docs/mockups/us-03.png` | US-03 |
+| `docs/mockups/us-04.png` | US-04 |
+| `docs/mockups/us-05.png` | US-05 |
+| `docs/mockups/us-06.png` | US-06 |
+| `docs/mockups/us-07.png` | US-07 |
+| `docs/mockups/us-08.png` | US-08 |
+| `docs/mockups/us-09.png` | US-09 |
+| `docs/mockups/us-10.png` | US-10 |
+
+## Diseño Arquitectónico
+
+Ver: [Arquitectura.md](./Arquitectura.md) — estilo, diagrama, descomposición modular y decisiones de diseño (ADR).
+
+## Responsabilidades del Equipo
+
+<!-- TODO: obligatorio completar antes de entregar, afecta la nota individual -->
+
+| Integrante | Rol | Ítems de la rúbrica a cargo |
+|------------|-----|------------------------------|
+| Martín Saldívar | | |
+| Martín Carvallo | | |
+| Claudia Medina | | |
+| Francisca Hernández | | |
+| Diego Urbano | | |
+
+## Instalación y ejecución
+
 ## Servidor Backend
 
-Este proyecto es el cerebro (Backend) en tiempo real para el control de congestión, desarrollado con Node.js, Express y Socket.io.
+Este proyecto es el cerebro (Backend) en tiempo real del Sistema de Pedidos para Restaurante (POS + KDS), desarrollado con Node.js, Express y Socket.io.
 Se usa Node.js con Express y Socket.io.
 A continuación, tienes los pasos exactos, detallados desde cero, para descargar, instalar y encender este servidor en CUALQUIER computadora
 
@@ -96,7 +168,7 @@ Para comprobar con tus propios ojos que la computadora externa está respondiend
 2. En la barra de arriba donde escribes las páginas web, escribe exactamente esto:
    `http://localhost:3000`
 3. Presiona `Enter`.
-4. En la pantalla blanca debe aparecer el texto: **"Servidor del Sistema de Congestión operativo."**
+4. En la pantalla blanca debe aparecer el texto: **"Servidor del Sistema de Pedidos para Restaurante operativo."**
 
 ---
 
