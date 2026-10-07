@@ -1,0 +1,32 @@
+===============================================================
+  EVIDENCIA - Ejercicio 2.2: Operacion 1 (actualizarEstado)
+  PedidoService con dependencias explicitas
+===============================================================
+
+--- CASO VALIDO: Ciclo completo Mesa 3 ---
+1. Recibido 📝:
+   Resultado: {"ok":true,"mesa":"Mesa 3","estado":"Recibido 📝"}
+   Mesa 3 estado: ocupada
+2. En Cocina 🍳:
+   Resultado: {"ok":true,"mesa":"Mesa 3","estado":"En Cocina 🍳"}
+3. Listo 🍽️:
+   Resultado: {"ok":true,"mesa":"Mesa 3","estado":"Listo 🍽️"}
+   Mesa 3 estado: libre
+   Pedido vigente: null
+   Eventos emitidos: 5
+
+--- CASO INVALIDO 1: mesa con formato incorrecto ---
+   Entrada: { mesa: "Mesa ", estado: "Recibido 📝" }
+   Resultado: {"ok":false,"tipo":"ENTRADA_INVALIDA","error":"mesa no tiene un formato válido","esperado":"\"Mesa N\" con N entero positivo."}
+
+--- CASO INVALIDO 2: transicion no permitida ---
+   Entrada: { mesa: "Mesa 3", estado: "Listo 🍽️" } con mesa en Recibido
+   Resultado: {"ok":false,"tipo":"ESTADO_NO_PERMITIDO","error":"Transición no permitida: Recibido 📝 → Listo 🍽️","esperado":"En Cocina 🍳"}
+
+--- CASO EXTRA: mesa como numero (no tumba el servidor) ---
+   Entrada: { mesa: 5 }
+   Resultado: {"ok":false,"tipo":"ENTRADA_INVALIDA","error":"mesa no tiene un formato válido","esperado":"\"Mesa N\" con N entero positivo."}
+
+===============================================================
+  Todos los casos ejecutados sin errores no controlados.
+===============================================================
