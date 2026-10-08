@@ -186,9 +186,9 @@ describe('PedidoService – dependencia no disponible', () => {
     const notificador = new NotificadorEspia();
     const servicio = new PedidoService({ pedidos, mesas, notificador });
 
-    expect(() =>
-      servicio.actualizarEstado({ mesa: 'Mesa 1', estado: 'Recibido 📝' })
-    ).toThrow('Fallo simulado de persistencia');
+    expect(() => servicio.actualizarEstado({ mesa: 'Mesa 1', estado: 'Recibido 📝' })).toThrow(
+      'Fallo simulado de persistencia'
+    );
   });
 
   test('propaga error si el notificador está caído', () => {
@@ -197,9 +197,9 @@ describe('PedidoService – dependencia no disponible', () => {
     const notificador = new NotificadorCaido();
     const servicio = new PedidoService({ pedidos, mesas, notificador });
 
-    expect(() =>
-      servicio.actualizarEstado({ mesa: 'Mesa 1', estado: 'Recibido 📝' })
-    ).toThrow('Dependencia no disponible');
+    expect(() => servicio.actualizarEstado({ mesa: 'Mesa 1', estado: 'Recibido 📝' })).toThrow(
+      'Dependencia no disponible'
+    );
   });
 
   test('lanza error si se construye sin dependencias', () => {

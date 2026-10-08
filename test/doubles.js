@@ -52,4 +52,33 @@ class NotificadorCaido {
   }
 }
 
-module.exports = { NotificadorEspia, PedidosQueFallan, NotificadorCaido };
+/**
+ * MesasQueFallan: repositorio de mesas que lanza error al ocupar o liberar,
+ * para verificar que MesaService deshace la operación y lanza DependenciaError.
+ */
+class MesasQueFallan {
+  constructor(cantidad = 10) {
+    this._mesas = [];
+    for (let i = 1; i <= cantidad; i++) {
+      this._mesas.push({ id: `Mesa ${i}`, numero: i, estado: 'libre' });
+    }
+  }
+
+  obtener(mesaId) {
+    return this._mesas.find((m) => m.id === mesaId) || null;
+  }
+
+  ocupar() {
+    throw new Error('Fallo simulado: no se puede ocupar la mesa');
+  }
+
+  liberar() {
+    throw new Error('Fallo simulado: no se puede liberar la mesa');
+  }
+
+  listar() {
+    return this._mesas.map((m) => ({ ...m }));
+  }
+}
+
+module.exports = { NotificadorEspia, PedidosQueFallan, NotificadorCaido, MesasQueFallan };

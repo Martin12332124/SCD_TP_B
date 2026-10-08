@@ -14,18 +14,18 @@ Todas las historias están registradas como GitHub Issues en el repositorio fron
 
 Las historias de usuario viven en el repositorio frontend: https://github.com/Martin12332124/SCD_TP_F/issues
 
-| ID | Nombre | Issue |
-|----|--------|-------|
-| US-01 | Selector de variantes-bebida | #22 |
-| US-02 | Descripción compacta del pedido | #23 |
-| US-03 | Agregacion de notas a los pedidos | #24 |
-| US-04 | Disponibilidad en los menus | #32 |
-| US-05 | Posibilidad de cambio de clientes-mesas | #33 |
-| US-06 | Actualización de pedidos en la cocina | #25 |
-| US-07 | Registrar precio al crear o editar | #26 |
-| US-08 | Ver mapa de mesas | #27 |
-| US-09 | Abrir o cerrar una mesa | #28 |
-| US-10 | Limpieza al servir un pedido | #30 |
+| ID    | Nombre                                  | Issue |
+| ----- | --------------------------------------- | ----- |
+| US-01 | Selector de variantes-bebida            | #22   |
+| US-02 | Descripción compacta del pedido         | #23   |
+| US-03 | Agregacion de notas a los pedidos       | #24   |
+| US-04 | Disponibilidad en los menus             | #32   |
+| US-05 | Posibilidad de cambio de clientes-mesas | #33   |
+| US-06 | Actualización de pedidos en la cocina   | #25   |
+| US-07 | Registrar precio al crear o editar      | #26   |
+| US-08 | Ver mapa de mesas                       | #27   |
+| US-09 | Abrir o cerrar una mesa                 | #28   |
+| US-10 | Limpieza al servir un pedido            | #30   |
 
 ## Requisitos Extrafuncionales
 
@@ -39,18 +39,18 @@ Ver: [DominioEntidades.md](./DominioEntidades.md) — 10 entidades, diagrama ER 
 
 <!-- TODO: reemplazar por las rutas reales una vez subidas las imágenes -->
 
-| Mockup | Historia de usuario relacionada |
-|--------|----------------------------------|
-| `docs/mockups/us-01.png` | US-01 |
-| `docs/mockups/us-02.png` | US-02 |
-| `docs/mockups/us-03.png` | US-03 |
-| `docs/mockups/us-04.png` | US-04 |
-| `docs/mockups/us-05.png` | US-05 |
-| `docs/mockups/us-06.png` | US-06 |
-| `docs/mockups/us-07.png` | US-07 |
-| `docs/mockups/us-08.png` | US-08 |
-| `docs/mockups/us-09.png` | US-09 |
-| `docs/mockups/us-10.png` | US-10 |
+| Mockup                   | Historia de usuario relacionada |
+| ------------------------ | ------------------------------- |
+| `docs/mockups/us-01.png` | US-01                           |
+| `docs/mockups/us-02.png` | US-02                           |
+| `docs/mockups/us-03.png` | US-03                           |
+| `docs/mockups/us-04.png` | US-04                           |
+| `docs/mockups/us-05.png` | US-05                           |
+| `docs/mockups/us-06.png` | US-06                           |
+| `docs/mockups/us-07.png` | US-07                           |
+| `docs/mockups/us-08.png` | US-08                           |
+| `docs/mockups/us-09.png` | US-09                           |
+| `docs/mockups/us-10.png` | US-10                           |
 
 ## Diseño Arquitectónico
 
@@ -60,13 +60,13 @@ Ver: [Arquitectura.md](./Arquitectura.md) — estilo, diagrama, descomposición 
 
 <!-- TODO: obligatorio completar antes de entregar, afecta la nota individual -->
 
-| Integrante | Rol | Ítems de la rúbrica a cargo |
-|------------|-----|------------------------------|
-| Martín Saldívar | Desarrollador | 2.1 Diseño Arquitectónico |
-| Martín Carvallo | Desarrollador y Historias | 1.1 Historias de Usuario, 2.4 Entidades del dominio |
-| Claudia Medina | Diseñadora y concepto del sistema.| 2.3 Mockups, 2.2 Diagrama de Arquitectura|
-| Francisca Hernández | Historias y Análisis de requisitos | 1.1 Historias de Usuario |
-| Diego Urbano | Coordinador | 1.2 Requisitos Extrafuncionales, 2.1 Diseño Arquitectónico |
+| Integrante          | Rol                                | Ítems de la rúbrica a cargo                                |
+| ------------------- | ---------------------------------- | ---------------------------------------------------------- |
+| Martín Saldívar     | Desarrollador                      | 2.1 Diseño Arquitectónico                                  |
+| Martín Carvallo     | Desarrollador y Historias          | 1.1 Historias de Usuario, 2.4 Entidades del dominio        |
+| Claudia Medina      | Diseñadora y concepto del sistema. | 2.3 Mockups, 2.2 Diagrama de Arquitectura                  |
+| Francisca Hernández | Historias y Análisis de requisitos | 1.1 Historias de Usuario                                   |
+| Diego Urbano        | Coordinador                        | 1.2 Requisitos Extrafuncionales, 2.1 Diseño Arquitectónico |
 
 ## Instalación y ejecución
 
@@ -135,6 +135,7 @@ npm install
 ```bash
 npm run format
 ```
+
 _Espera un par de segundos. Aparecerán muchas líneas de texto en la terminal y una barra de carga. Sabrás que terminó cuando la terminal te deje escribir comandos otra vez._
 
 ---
