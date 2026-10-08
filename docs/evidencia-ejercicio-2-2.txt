@@ -28,5 +28,23 @@
    Resultado: {"ok":false,"tipo":"ENTRADA_INVALIDA","error":"mesa no tiene un formato válido","esperado":"\"Mesa N\" con N entero positivo."}
 
 ===============================================================
+  EVIDENCIA - Ejercicio 2.2: Operacion 2 (validacion mesa)
+  Segunda barrera defensiva en PedidoService
+===============================================================
+
+--- CASO VALIDO: Mesa 5 (positivo) ---
+   Entrada: { mesa: "Mesa 5", estado: "Recibido 📝" }
+   Resultado: {"ok":true,"mesa":"Mesa 5","estado":"Recibido 📝"}
+   Mesa 5 estado: ocupada
+
+--- CASO INVALIDO 1: Mesa 0 (menor o igual a 0) ---
+   Entrada: { mesa: "Mesa 0", estado: "Recibido 📝" }
+   Resultado: {"ok":false,"tipo":"ENTRADA_INVALIDA","error":"mesa no tiene un formato válido","esperado":"\"Mesa N\" con N entero positivo."}
+
+--- CASO INVALIDO 2: Mesa -1 (negativo) ---
+   Entrada: { mesa: "Mesa -1", estado: "Recibido 📝" }
+   Resultado: {"ok":false,"tipo":"ENTRADA_INVALIDA","error":"mesa no tiene un formato válido","esperado":"\"Mesa N\" con N entero positivo."}
+
+===============================================================
   Todos los casos ejecutados sin errores no controlados.
 ===============================================================
