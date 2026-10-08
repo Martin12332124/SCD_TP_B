@@ -66,6 +66,31 @@ registrar('   Entrada: { mesa: 5 }');
 registrar(`   Resultado: ${JSON.stringify(r)}`);
 registrar();
 
+// --- OPERACION 2 (Ficha 2): Segunda barrera defensiva de numero de mesa ---
+registrar('===============================================================');
+registrar('  EVIDENCIA - Ejercicio 2.2: Operacion 2 (validacion mesa)');
+registrar('  Segunda barrera defensiva en PedidoService');
+registrar('===============================================================\n');
+
+registrar('--- CASO VALIDO: Mesa 5 (positivo) ---');
+r = servicio.actualizarEstado({ mesa: 'Mesa 5', estado: 'Recibido 📝' });
+registrar('   Entrada: { mesa: "Mesa 5", estado: "Recibido 📝" }');
+registrar(`   Resultado: ${JSON.stringify(r)}`);
+registrar(`   Mesa 5 estado: ${mesas.obtener('Mesa 5').estado}`);
+registrar();
+
+registrar('--- CASO INVALIDO 1: Mesa 0 (menor o igual a 0) ---');
+r = servicio.actualizarEstado({ mesa: 'Mesa 0', estado: 'Recibido 📝' });
+registrar('   Entrada: { mesa: "Mesa 0", estado: "Recibido 📝" }');
+registrar(`   Resultado: ${JSON.stringify(r)}`);
+registrar();
+
+registrar('--- CASO INVALIDO 2: Mesa -1 (negativo) ---');
+r = servicio.actualizarEstado({ mesa: 'Mesa -1', estado: 'Recibido 📝' });
+registrar('   Entrada: { mesa: "Mesa -1", estado: "Recibido 📝" }');
+registrar(`   Resultado: ${JSON.stringify(r)}`);
+registrar();
+
 registrar('===============================================================');
 registrar('  Todos los casos ejecutados sin errores no controlados.');
 registrar('===============================================================');
