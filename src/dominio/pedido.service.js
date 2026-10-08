@@ -15,7 +15,7 @@ const TRANSICIONES = {
   null: 'Recibido 📝',
   'Recibido 📝': 'En Cocina 🍳',
   'En Cocina 🍳': 'Listo 🍽️',
-  'Listo 🍽️': 'Recibido 📝',
+  'Listo 🍽️': 'Recibido 📝'
 };
 
 class PedidoService {
@@ -63,7 +63,7 @@ class PedidoService {
       return {
         ok: false,
         tipo: 'ENTRADA_INVALIDA',
-        error: 'Se esperaba un objeto con "mesa" y "estado".',
+        error: 'Se esperaba un objeto con "mesa" y "estado".'
       };
     }
 
@@ -75,7 +75,7 @@ class PedidoService {
         ok: false,
         tipo: 'ENTRADA_INVALIDA',
         error: 'mesa no tiene un formato válido',
-        esperado: '"Mesa N" con N entero positivo.',
+        esperado: '"Mesa N" con N entero positivo.'
       };
     }
 
@@ -86,7 +86,7 @@ class PedidoService {
         ok: false,
         tipo: 'ENTRADA_INVALIDA',
         error: 'mesa no tiene un formato válido',
-        esperado: '"Mesa N" con N entero positivo.',
+        esperado: '"Mesa N" con N entero positivo.'
       };
     }
 
@@ -96,7 +96,7 @@ class PedidoService {
         ok: false,
         tipo: 'ENTRADA_INVALIDA',
         error: `estado "${estado}" no es válido`,
-        esperado: ESTADOS_VALIDOS.join(', '),
+        esperado: ESTADOS_VALIDOS.join(', ')
       };
     }
 
@@ -111,7 +111,7 @@ class PedidoService {
         ok: false,
         tipo: 'ESTADO_NO_PERMITIDO',
         error: `Transición no permitida: ${estadoActual || 'sin pedido'} → ${estado}`,
-        esperado: estadoEsperado,
+        esperado: estadoEsperado
       };
     }
 

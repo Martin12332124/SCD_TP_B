@@ -48,3 +48,33 @@
 ===============================================================
   Todos los casos ejecutados sin errores no controlados.
 ===============================================================
+
+===============================================================
+  EVIDENCIA - Ejercicio 2.2: Operacion 3 (trasladarPedido)
+  MesaService — Traslado de pedido entre mesas (US-05)
+===============================================================
+
+--- CASO VALIDO: Trasladar pedido de Mesa 2 a Mesa 6 ---
+   Entrada: { origen: 2, destino: 6 }
+   Resultado: {"ok":true,"origen":"Mesa 2","destino":"Mesa 6","estado":"En Cocina 🍳"}
+   Mesa 2 estado: libre
+   Mesa 6 estado: ocupada
+   Pedido en Mesa 2: null
+   Pedido en Mesa 6: {"mesa":"Mesa 6","estado":"En Cocina 🍳"}
+   Eventos emitidos: 2
+
+--- CASO INVALIDO 1: origen igual a destino ---
+   Entrada: { origen: 4, destino: 4 }
+   Resultado: {"ok":false,"tipo":"ENTRADA_INVALIDA","error":"origen y destino deben ser mesas distintas.","esperado":"Dos números de mesa diferentes."}
+
+--- CASO INVALIDO 2: mesa origen libre (sin pedido) ---
+   Entrada: { origen: 5, destino: 9 } (Mesa 5 está libre)
+   Resultado: {"ok":false,"tipo":"ESTADO_NO_PERMITIDO","error":"La mesa 5 no tiene un pedido que trasladar.","esperado":"Mesa de origen en estado \"ocupada\" con pedido vigente."}
+
+--- CASO INVALIDO EXTRA: destino ya ocupado ---
+   Entrada: { origen: 6, destino: 3 } (Mesa 3 ya está ocupada)
+   Resultado: {"ok":false,"tipo":"ESTADO_NO_PERMITIDO","error":"La mesa 3 no está disponible para recibir el traslado.","esperado":"Mesa de destino en estado \"libre\" y sin pedido vigente."}
+
+===============================================================
+  Todos los casos de Operacion 3 ejecutados sin errores.
+===============================================================

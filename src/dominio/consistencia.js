@@ -18,9 +18,7 @@ function verificarConsistenciaMesasPedidos(pedidos, mesas) {
     if (m.estado === 'ocupada') {
       const pedido = pedidos.obtener(m.id);
       if (!pedido) {
-        throw new Error(
-          `Invariante rota: Mesa ${m.id} está ocupada pero no tiene pedido vigente.`
-        );
+        throw new Error(`Invariante rota: Mesa ${m.id} está ocupada pero no tiene pedido vigente.`);
       }
     }
   }
@@ -29,9 +27,7 @@ function verificarConsistenciaMesasPedidos(pedidos, mesas) {
   for (const [mesaId, pedido] of Object.entries(todosPedidos)) {
     const mesaInfo = todasMesas.find((m) => m.id === mesaId);
     if (!mesaInfo || mesaInfo.estado !== 'ocupada') {
-      throw new Error(
-        `Invariante rota: Pedido vigente en ${mesaId} pero la mesa no está ocupada.`
-      );
+      throw new Error(`Invariante rota: Pedido vigente en ${mesaId} pero la mesa no está ocupada.`);
     }
   }
 }

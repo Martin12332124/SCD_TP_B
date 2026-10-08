@@ -95,6 +95,70 @@ registrar('===============================================================');
 registrar('  Todos los casos ejecutados sin errores no controlados.');
 registrar('===============================================================');
 
+// ─── OPERACIÓN 3 (Ficha 3): Traslado de pedido entre mesas (US-05) ──────────
+const { MesaService } = require('../src/dominio/mesa.service');
+
+// Contexto fresco para la operación 3
+const pedidos3 = new PedidosEnMemoria();
+const mesas3 = new MesasEnMemoria(10);
+const notificador3 = new NotificadorEspia();
+
+// Precargar un pedido en Mesa 2 para el caso válido
+mesas3.ocupar('Mesa 2');
+pedidos3.guardar('Mesa 2', { mesa: 'Mesa 2', estado: 'En Cocina 🍳' });
+
+const mesaServicio = new MesaService({
+  pedidos: pedidos3,
+  mesas: mesas3,
+  notificador: notificador3
+});
+
+registrar('\n===============================================================');
+registrar('  EVIDENCIA - Ejercicio 2.2: Operacion 3 (trasladarPedido)');
+registrar('  MesaService — Traslado de pedido entre mesas (US-05)');
+registrar('===============================================================\n');
+
+// --- CASO VALIDO: traslado de Mesa 2 → Mesa 6 -------------------------------
+registrar('--- CASO VALIDO: Trasladar pedido de Mesa 2 a Mesa 6 ---');
+r = mesaServicio.trasladarPedido({ origen: 2, destino: 6 });
+registrar('   Entrada: { origen: 2, destino: 6 }');
+registrar(`   Resultado: ${JSON.stringify(r)}`);
+registrar(`   Mesa 2 estado: ${mesas3.obtener('Mesa 2').estado}`);
+registrar(`   Mesa 6 estado: ${mesas3.obtener('Mesa 6').estado}`);
+registrar(`   Pedido en Mesa 2: ${JSON.stringify(pedidos3.obtener('Mesa 2'))}`);
+registrar(`   Pedido en Mesa 6: ${JSON.stringify(pedidos3.obtener('Mesa 6'))}`);
+registrar(`   Eventos emitidos: ${notificador3.eventos.length}`);
+registrar();
+
+// --- CASO INVALIDO 1: origen igual a destino --------------------------------
+registrar('--- CASO INVALIDO 1: origen igual a destino ---');
+r = mesaServicio.trasladarPedido({ origen: 4, destino: 4 });
+registrar('   Entrada: { origen: 4, destino: 4 }');
+registrar(`   Resultado: ${JSON.stringify(r)}`);
+registrar();
+
+// --- CASO INVALIDO 2: mesa origen libre (sin pedido) ------------------------
+registrar('--- CASO INVALIDO 2: mesa origen libre (sin pedido) ---');
+r = mesaServicio.trasladarPedido({ origen: 5, destino: 9 });
+registrar('   Entrada: { origen: 5, destino: 9 } (Mesa 5 está libre)');
+registrar(`   Resultado: ${JSON.stringify(r)}`);
+registrar();
+
+// --- CASO INVALIDO EXTRA: destino ocupado -----------------------------------
+// Primero ocupamos Mesa 3
+mesas3.ocupar('Mesa 3');
+pedidos3.guardar('Mesa 3', { mesa: 'Mesa 3', estado: 'Recibido 📝' });
+// Intentamos trasladar Mesa 6 (ya tiene el pedido trasladado) a Mesa 3 (ocupada)
+registrar('--- CASO INVALIDO EXTRA: destino ya ocupado ---');
+r = mesaServicio.trasladarPedido({ origen: 6, destino: 3 });
+registrar('   Entrada: { origen: 6, destino: 3 } (Mesa 3 ya está ocupada)');
+registrar(`   Resultado: ${JSON.stringify(r)}`);
+registrar();
+
+registrar('===============================================================');
+registrar('  Todos los casos de Operacion 3 ejecutados sin errores.');
+registrar('===============================================================');
+
 // Guardar directamente en docs/evidencia-ejercicio-2-2.txt en UTF-8 puro sin BOM
 const rutaDestino = path.join(__dirname, '..', 'docs', 'evidencia-ejercicio-2-2.txt');
 fs.writeFileSync(rutaDestino, lineas.join('\n') + '\n', { encoding: 'utf8' });
