@@ -58,7 +58,7 @@ Ver: [Arquitectura.md](./Arquitectura.md) — estilo, diagrama, descomposición 
 
 ## Responsabilidades del Equipo
 
-<!-- TODO: obligatorio completar antes de entregar, afecta la nota individual -->
+### Entregable 1
 
 | Integrante          | Rol                                | Ítems de la rúbrica a cargo                                |
 | ------------------- | ---------------------------------- | ---------------------------------------------------------- |
@@ -67,6 +67,16 @@ Ver: [Arquitectura.md](./Arquitectura.md) — estilo, diagrama, descomposición 
 | Claudia Medina      | Diseñadora y concepto del sistema. | 2.3 Mockups, 2.2 Diagrama de Arquitectura                  |
 | Francisca Hernández | Historias y Análisis de requisitos | 1.1 Historias de Usuario                                   |
 | Diego Urbano        | Coordinador                        | 1.2 Requisitos Extrafuncionales, 2.1 Diseño Arquitectónico |
+
+### Entregable 2
+
+| Integrante          | Rol                                          | Ítems de la rúbrica a cargo                                                |
+| ------------------- | -------------------------------------------- | -------------------------------------------------------------------------- |
+| Francisca Hernández | Analista de Requisitos (Refinamiento con IA) | 1.1 Mejora de Historias de Usuario con Clarita Review                      |
+| Claudia Medina      | Gestión de Requisitos y Control de Cambios   | 1.1 Mejora de Historias de Usuario con Clarita Review (cambios realizados) |
+| Martín Carvallo     | Desarrollador Backend (APIs)                 | 2.1 Desarrollo de una HU en backend (APIs)                                 |
+| Diego Urbano        | Coordinador y Desarrollador Backend (APIs)   | 2.1 Desarrollo de una HU en backend (APIs)                                 |
+| Martín Saldívar     | Ingeniero de Pruebas / QA (Thunder Client)   | 4.1 Casos de prueba para las APIs (Thunder Client)                         |
 
 ## Instalación y ejecución
 
