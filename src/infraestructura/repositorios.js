@@ -59,4 +59,59 @@ class MesasEnMemoria {
   }
 }
 
-module.exports = { PedidosEnMemoria, MesasEnMemoria };
+/**
+ * Repositorio de ítems del menú en memoria.
+ * Almacena ítems con id autoincremental, nombre, precioBase y disponible.
+ * Acepta una semilla opcional para inicializar con datos de producción o test.
+ */
+class MenuItemsEnMemoria {
+  constructor(semilla = []) {
+    this._items = new Map();
+    this._siguienteId = 1;
+
+    for (const item of semilla) {
+      this._items.set(item.id, { ...item });
+      if (item.id >= this._siguienteId) {
+        this._siguienteId = item.id + 1;
+      }
+    }
+  }
+
+  obtener(id) {
+    return this._items.get(id) ? { ...this._items.get(id) } : null;
+  }
+
+  /**
+   * Busca un ítem por nombre (sin distinción de mayúsculas ni espacios extremos).
+   * @param {string} nombre
+   * @returns {object|null}
+   */
+  buscarPorNombre(nombre) {
+    const normalizado = nombre.trim().toLowerCase();
+    for (const item of this._items.values()) {
+      if (item.nombre.trim().toLowerCase() === normalizado) {
+        return { ...item };
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Guarda un ítem. Si no tiene id, asigna uno autoincremental.
+   * @param {object} item
+   * @returns {object} El ítem guardado (con id asignado si era nuevo).
+   */
+  guardar(item) {
+    if (!item.id) {
+      item.id = this._siguienteId++;
+    }
+    this._items.set(item.id, { ...item });
+    return { ...item };
+  }
+
+  listar() {
+    return Array.from(this._items.values()).map((item) => ({ ...item }));
+  }
+}
+
+module.exports = { PedidosEnMemoria, MesasEnMemoria, MenuItemsEnMemoria };

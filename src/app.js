@@ -9,9 +9,11 @@ const { Server } = require('socket.io');
 const { PedidoService } = require('./dominio/pedido.service');
 const { MesaService } = require('./dominio/mesa.service');
 const { MesaEstadoService } = require('./dominio/mesa-estado.service');
-const { PedidosEnMemoria, MesasEnMemoria } = require('./infraestructura/repositorios');
+const { MenuItemService } = require('./dominio/menu-item.service');
+const { PedidosEnMemoria, MesasEnMemoria, MenuItemsEnMemoria } = require('./infraestructura/repositorios');
 const { SocketNotificador } = require('./infraestructura/notificador');
 const { crearMesasRouter } = require('./presentacion/mesas.router');
+const { crearMenuItemsRouter } = require('./presentacion/menu-items.router');
 
 function crearApp() {
   const app = express();
@@ -29,14 +31,23 @@ function crearApp() {
   // ── Instancias de producción (inyección de dependencias) ──────────
   const pedidos = new PedidosEnMemoria();
   const mesas = new MesasEnMemoria(10);
+  const menuItems = new MenuItemsEnMemoria([
+    { id: 1, nombre: 'Pizza Margarita', precioBase: 8500, disponible: true },
+    { id: 2, nombre: 'Coca-Cola 500 ml', precioBase: 2000, disponible: true },
+    { id: 3, nombre: 'Ensalada César', precioBase: 6500, disponible: true }
+  ]);
   const notificador = new SocketNotificador(io);
 
   const pedidoService = new PedidoService({ pedidos, mesas, notificador });
   const mesaService = new MesaService({ pedidos, mesas, notificador });
   const mesaEstadoService = new MesaEstadoService({ pedidos, mesas, notificador });
+  const menuItemService = new MenuItemService({ menuItems, notificador });
 
   // ── API REST (US-09): gestión de estado de mesas ──────────────────
   app.use('/api/mesas', crearMesasRouter({ mesaEstadoService }));
+
+  // ── API REST (US-07): gestión de ítems del menú ───────────────────
+  app.use('/api/menu-items', crearMenuItemsRouter({ menuItemService }));
 
   // Ruta básica de prueba
   app.get('/', (req, res) => {
@@ -108,7 +119,39 @@ function crearApp() {
     });
   });
 
-  return { app, server, io, pedidoService, mesaService, mesaEstadoService, pedidos, mesas };
+  // ── Middleware de errores de Express 5 (DESPUÉS de montar rutas) ───
+  // Captura JSON malformado y errores internos; devuelve JSON, no HTML.
+  // eslint-disable-next-line no-unused-vars
+  app.use((err, req, res, _next) => {
+    // JSON malformado en el body (SyntaxError de express.json())
+    if (err.type === 'entity.parse.failed') {
+      return res.status(400).json({
+        ok: false,
+        tipo: 'ENTRADA_INVALIDA',
+        error: 'El cuerpo de la petición no es un JSON válido.'
+      });
+    }
+
+    // Cualquier otro error
+    return res.status(500).json({
+      ok: false,
+      tipo: 'ERROR_INTERNO',
+      error: err.message
+    });
+  });
+
+  return {
+    app,
+    server,
+    io,
+    pedidoService,
+    mesaService,
+    mesaEstadoService,
+    menuItemService,
+    pedidos,
+    mesas,
+    menuItems
+  };
 }
 
 module.exports = { crearApp };
