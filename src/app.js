@@ -8,8 +8,10 @@ const { Server } = require('socket.io');
 
 const { PedidoService } = require('./dominio/pedido.service');
 const { MesaService } = require('./dominio/mesa.service');
+const { MesaEstadoService } = require('./dominio/mesa-estado.service');
 const { PedidosEnMemoria, MesasEnMemoria } = require('./infraestructura/repositorios');
 const { SocketNotificador } = require('./infraestructura/notificador');
+const { crearMesasRouter } = require('./presentacion/mesas.router');
 
 function crearApp() {
   const app = express();
@@ -31,6 +33,10 @@ function crearApp() {
 
   const pedidoService = new PedidoService({ pedidos, mesas, notificador });
   const mesaService = new MesaService({ pedidos, mesas, notificador });
+  const mesaEstadoService = new MesaEstadoService({ pedidos, mesas, notificador });
+
+  // ── API REST (US-09): gestión de estado de mesas ──────────────────
+  app.use('/api/mesas', crearMesasRouter({ mesaEstadoService }));
 
   // Ruta básica de prueba
   app.get('/', (req, res) => {
@@ -102,7 +108,7 @@ function crearApp() {
     });
   });
 
-  return { app, server, io, pedidoService, mesaService, pedidos, mesas };
+  return { app, server, io, pedidoService, mesaService, mesaEstadoService, pedidos, mesas };
 }
 
 module.exports = { crearApp };
