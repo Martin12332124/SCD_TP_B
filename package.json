@@ -6,8 +6,22 @@
   "scripts": {
     "start": "node index.js",
     "test": "jest --verbose",
+    "test:coverage": "jest --coverage --runInBand --collectCoverageFrom=src/**/*.js",
+    "test:ci": "jest --ci --coverage --runInBand --watch=false --collectCoverageFrom=src/**/*.js",
     "evidencia": "node scripts/evidencia.js",
     "format": "prettier --write \"**/*.{js,json,md}\" --ignore-path .gitignore"
+  },
+  "jest": {
+    "collectCoverageFrom": [
+      "src/**/*.js",
+      "!src/**/*.test.js"
+    ],
+    "coverageReporters": [
+      "text",
+      "text-summary",
+      "lcov",
+      "html"
+    ]
   },
   "repository": {
     "type": "git",
