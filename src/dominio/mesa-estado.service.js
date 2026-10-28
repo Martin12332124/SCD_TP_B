@@ -52,11 +52,9 @@ class MesaEstadoService {
    *   - numero = 1.5  → ENTRADA_INVALIDA
    */
   _validarNumero(numero) {
-    // El parámetro llega como string desde la URL; lo convertimos a entero.
-    const parsed = Number(numero);
-
-    // Debe ser un entero (sin decimales) y positivo (> 0)
-    if (!Number.isInteger(parsed) || parsed <= 0) {
+    // El parámetro llega como string desde la URL. Se exige solo dígitos, sin ceros
+    // a la izquierda ni signos: rechaza "1e1", "0x5", " 5", "1.5", "-1" y "0".
+    if (!/^[1-9]\d*$/.test(String(numero))) {
       return {
         ok: false,
         tipo: 'ENTRADA_INVALIDA',
@@ -64,6 +62,9 @@ class MesaEstadoService {
         esperado: 'Entero positivo mayor a 0 (ej. 1–10).'
       };
     }
+
+    // Ya validado el formato, la conversión a número es segura.
+    const parsed = Number(numero);
 
     return { ok: true, mesaId: `Mesa ${parsed}`, numero: parsed };
   }
