@@ -3,7 +3,7 @@
 
 const { MesaService, DependenciaError } = require('../src/dominio/mesa.service');
 const { PedidosEnMemoria, MesasEnMemoria } = require('../src/infraestructura/repositorios');
-const { NotificadorEspia, PedidosQueFallan, MesasQueFallan } = require('./doubles');
+const { NotificadorEspia, MesasQueFallan } = require('./doubles');
 
 /**
  * Helper: crea un contexto fresco con mesas reales, pedidos reales y notificador espía.
@@ -252,6 +252,7 @@ describe('MesaService.trasladarPedido – dependencia no disponible', () => {
   });
 
   test('DependenciaError conserva el mensaje de causa', () => {
+    expect.assertions(3);    
     const pedidos = new PedidosEnMemoria();
     const mesas = new MesasQueFallan(10);
     const notificador = new NotificadorEspia();
@@ -263,7 +264,6 @@ describe('MesaService.trasladarPedido – dependencia no disponible', () => {
 
     try {
       servicio.trasladarPedido({ origen: 2, destino: 5 });
-      fail('Debió lanzar error');
     } catch (err) {
       expect(err).toBeInstanceOf(DependenciaError);
       expect(err.message).toContain('Fallo al trasladar pedido');
