@@ -43,8 +43,8 @@ function crearApp() {
   const mesaEstadoService = new MesaEstadoService({ pedidos, mesas, notificador });
   const menuItemService = new MenuItemService({ menuItems, notificador });
 
-  // ── API REST (US-09): gestión de estado de mesas ──────────────────
-  app.use('/api/mesas', crearMesasRouter({ mesaEstadoService }));
+  // ── API REST (US-08, US-09): gestión de estado de mesas ──────────────
+  app.use('/api/mesas', crearMesasRouter({ mesaEstadoService, mesas }));
 
   // ── API REST (US-07): gestión de ítems del menú ───────────────────
   app.use('/api/menu-items', crearMenuItemsRouter({ menuItemService }));
