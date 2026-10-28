@@ -71,7 +71,7 @@ describe('Operación 2 (Ficha 2) – Segunda barrera defensiva de número de mes
     });
 
     test('Caso válido: procesa correctamente límite inferior "Mesa 1"', () => {
-      const { servicio, notificador, mesas } = crearContexto();
+      const { servicio, mesas } = crearContexto();
       const res = servicio.actualizarEstado({ mesa: 'Mesa 1', estado: 'Recibido 📝' });
 
       expect(res.ok).toBe(true);
