@@ -22,5 +22,18 @@ jobs:
       - name: Instalar dependencias
         run: npm ci
 
-      - name: Ejecutar pruebas y cobertura
+      - name: Verificar construcción
+        run: npm run build
+
+      - name: Analizar código (lint)
+        run: npm run lint
+
+      - name: Ejecutar pruebas con cobertura
         run: npm run test:ci
+
+      - name: Guardar reporte de cobertura
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/

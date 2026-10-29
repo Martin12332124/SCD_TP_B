@@ -169,14 +169,14 @@ class MesaService {
       if (pedidoGuardadoEnDestino) {
         try {
           this.pedidos.eliminar(destinoId);
-        } catch (_) {
+        } catch {
           // Ignorar errores durante el rollback
         }
       }
       if (origenEliminado) {
         try {
           this.pedidos.guardar(origenId, pedidoOrigen);
-        } catch (_) {
+        } catch {
           // Ignorar errores durante el rollback
         }
       }

@@ -6,10 +6,12 @@
   "scripts": {
     "start": "node index.js",
     "test": "jest --verbose",
-    "test:coverage": "jest --coverage --runInBand --collectCoverageFrom=src/**/*.js",
-    "test:ci": "jest --ci --coverage --runInBand --watch=false --collectCoverageFrom=src/**/*.js",
+    "test:coverage": "jest --coverage --runInBand",
+    "test:ci": "jest --ci --coverage --runInBand --watch=false",
     "evidencia": "node scripts/evidencia.js",
-    "format": "prettier --write \"**/*.{js,json,md}\" --ignore-path .gitignore"
+    "format": "prettier --write \"**/*.{js,json,md}\" --ignore-path .gitignore",
+    "lint": "eslint .",
+    "build": "node --check index.js"
   },
   "jest": {
     "collectCoverageFrom": [
@@ -21,25 +23,46 @@
       "text-summary",
       "lcov",
       "html"
-    ]
+    ],
+    "coverageThreshold": {
+      "global": {
+        "statements": 70,
+        "lines": 70,
+        "functions": 70,
+        "branches": 60
+      },
+      "./src/dominio/mesa-estado.service.js": {
+        "lines": 80,
+        "functions": 80,
+        "branches": 70
+      },
+      "./src/dominio/menu-item.service.js": {
+        "lines": 80,
+        "functions": 80,
+        "branches": 70
+      }
+    }
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Martin12332124/SCD_TP_F.git"
+    "url": "git+https://github.com/Martin12332124/SCD_TP_B.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "bugs": {
-    "url": "https://github.com/Martin12332124/SCD_TP_F/issues"
+    "url": "https://github.com/Martin12332124/SCD_TP_B/issues"
   },
-  "homepage": "https://github.com/Martin12332124/SCD_TP_F#readme",
+  "homepage": "https://github.com/Martin12332124/SCD_TP_B#readme",
   "dependencies": {
     "express": "^5.2.1",
     "socket.io": "^4.8.3"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.13.0",
+    "globals": "^17.13.0",
     "jest": "^30.5.2",
     "prettier": "^3.9.6"
   }

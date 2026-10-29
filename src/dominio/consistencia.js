@@ -24,7 +24,7 @@ function verificarConsistenciaMesasPedidos(pedidos, mesas) {
   }
 
   // 2. Todo pedido vigente debe estar en una mesa ocupada
-  for (const [mesaId, pedido] of Object.entries(todosPedidos)) {
+  for (const mesaId of Object.keys(todosPedidos)) {
     const mesaInfo = todasMesas.find((m) => m.id === mesaId);
     if (!mesaInfo || mesaInfo.estado !== 'ocupada') {
       throw new Error(`Invariante rota: Pedido vigente en ${mesaId} pero la mesa no está ocupada.`);
