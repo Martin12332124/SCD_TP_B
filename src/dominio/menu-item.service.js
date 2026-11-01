@@ -328,6 +328,41 @@ class MenuItemService {
     return { ok: true, item: guardado };
   }
 
+  /**
+   * Cambia la disponibilidad de un ítem (US-04: marcar/desmarcar "Agotado").
+   * @param {string|number} id
+   * @param {boolean} disponible
+   * @returns {{ ok: true, item: object } | { ok: false, tipo: string, error: string }}
+   */
+  cambiarDisponibilidad(id, disponible) {
+    const validId = this._validarId(id);
+    if (!validId.ok) return validId;
+
+    if (typeof disponible !== 'boolean') {
+      return {
+        ok: false,
+        tipo: 'ENTRADA_INVALIDA',
+        error: 'El campo "disponible" debe ser verdadero o falso.'
+      };
+    }
+
+    const item = this.menuItems.obtener(validId.id);
+    if (!item) {
+      return {
+        ok: false,
+        tipo: 'NO_ENCONTRADO',
+        error: `No existe un ítem con id ${validId.id}.`
+      };
+    }
+
+    item.disponible = disponible;
+    const guardado = this.menuItems.guardar(item);
+
+    this.notificador.emitir('menu_actualizado', { accion: 'disponibilidad', item: guardado });
+
+    return { ok: true, item: guardado };
+  }
+
   // ─── consultas de solo lectura ─────────────────────────────────────────────
 
   /**

@@ -6,6 +6,7 @@
 //   PUT  /api/menu-items/:id     → edita nombre y/o precioBase de un ítem existente
 //   GET  /api/menu-items         → lista todos los ítems
 //   GET  /api/menu-items/:id     → obtiene un ítem por id
+//   PATCH /api/menu-items/:id/disponibilidad → cambia disponible (true/false)
 //
 // Cada ruta delega la lógica al MenuItemService y traduce su resultado
 // a la respuesta HTTP correspondiente (código de estado + cuerpo JSON).
@@ -96,6 +97,30 @@ function crearMenuItemsRouter({ menuItemService }) {
    */
   router.get('/:id', (req, res) => {
     const resultado = menuItemService.obtenerItem(req.params.id);
+
+    if (resultado.ok) {
+      return res.status(200).json(resultado);
+    }
+
+    const status = HTTP_STATUS[resultado.tipo] ?? 500;
+    return res.status(status).json(resultado);
+  });
+
+  /**
+   * PATCH /api/menu-items/:id/disponibilidad
+   *
+   * Cuerpo: { disponible: boolean }. Sin control de rol por ahora.
+   *
+   * Respuestas:
+   *   200 OK           { ok: true,  item: { id, nombre, precioBase, disponible } }
+   *   400 Bad Request  { ok: false, tipo: "ENTRADA_INVALIDA", error: "..." }
+   *   404 Not Found    { ok: false, tipo: "NO_ENCONTRADO", error: "..." }
+   */
+  router.patch('/:id/disponibilidad', (req, res) => {
+    const resultado = menuItemService.cambiarDisponibilidad(
+      req.params.id,
+      req.body?.disponible
+    );
 
     if (resultado.ok) {
       return res.status(200).json(resultado);
