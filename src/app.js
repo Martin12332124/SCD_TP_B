@@ -47,13 +47,13 @@ function crearApp() {
   ]);
   const notificador = new SocketNotificador(io);
 
-  const pedidoService = new PedidoService({ pedidos, mesas, notificador });
+  const pedidoService = new PedidoService({ pedidos, mesas, notificador, menuItems });
   const mesaService = new MesaService({ pedidos, mesas, notificador });
   const mesaEstadoService = new MesaEstadoService({ pedidos, mesas, notificador });
   const menuItemService = new MenuItemService({ menuItems, notificador });
 
   // ── API REST (US-08, US-09): gestión de estado de mesas ──────────────
-  app.use('/api/mesas', crearMesasRouter({ mesaEstadoService, mesas }));
+  app.use('/api/mesas', crearMesasRouter({ mesaEstadoService, mesas, pedidoService }));
 
   // ── API REST (US-07): gestión de ítems del menú ───────────────────
   app.use('/api/menu-items', crearMenuItemsRouter({ menuItemService }));
@@ -87,6 +87,26 @@ function crearApp() {
         }
       } catch (error) {
         // Dependencia no disponible: propagar el error sin ocultar
+        console.error(`💥 ERROR INTERNO: ${error.message}`);
+        socket.emit('respuesta_pedido', {
+          ok: false,
+          tipo: 'ERROR_INTERNO',
+          error: error.message
+        });
+      }
+    });
+
+    // Atajo: confirmar el pedido de una mesa y enviarlo directo a cocina
+    socket.on('confirmar_pedido', (datos) => {
+      console.log('\n[SOCKET] Confirmación de pedido (directo a cocina):', datos);
+
+      try {
+        const resultado = pedidoService.confirmarPedido(datos);
+        if (!resultado.ok) {
+          console.error(`❌ RECHAZADO [${resultado.tipo}]: ${resultado.error}`);
+        }
+        socket.emit('respuesta_pedido', resultado);
+      } catch (error) {
         console.error(`💥 ERROR INTERNO: ${error.message}`);
         socket.emit('respuesta_pedido', {
           ok: false,

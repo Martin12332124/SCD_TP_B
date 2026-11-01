@@ -18,7 +18,7 @@ const { Router } = require('express');
  * @param {{ mesaEstadoService: import('../dominio/mesa-estado.service').MesaEstadoService }} deps
  * @returns {Router}
  */
-function crearMesasRouter({ mesaEstadoService, mesas }) {
+function crearMesasRouter({ mesaEstadoService, mesas, pedidoService = null }) {
   const router = Router();
 
   // ── Tabla de mapeo: tipo de error → código HTTP ──────────────────────────
@@ -40,6 +40,35 @@ function crearMesasRouter({ mesaEstadoService, mesas }) {
    */
   router.get('/', (req, res) => {
     return res.status(200).json({ ok: true, mesas: mesas.listar() });
+  });
+
+  /**
+   * GET /api/mesas/:numero/pedido
+   *
+   * Resumen de lo que la mesa tiene pedido: ítems acumulados, total y estado.
+   *
+   * Respuestas:
+   *   200 OK  { ok: true, mesa, estado, items: [{ id, nombre, precioBase, cantidad }], total }
+   *   400 Bad Request / 404 Not Found según la validación de la mesa
+   */
+  router.get('/:numero/pedido', (req, res) => {
+    const validacion = mesaEstadoService._validarNumero(req.params.numero);
+    if (!validacion.ok) {
+      return res.status(HTTP_STATUS[validacion.tipo] ?? 400).json(validacion);
+    }
+    if (!mesas.obtener(validacion.mesaId)) {
+      return res.status(404).json({
+        ok: false,
+        tipo: 'NO_ENCONTRADO',
+        error: `La mesa ${req.params.numero} no existe.`
+      });
+    }
+    if (!pedidoService) {
+      return res
+        .status(200)
+        .json({ ok: true, mesa: validacion.mesaId, estado: null, items: [], total: 0 });
+    }
+    return res.status(200).json(pedidoService.obtenerResumen(validacion.mesaId));
   });
 
   /**
