@@ -206,3 +206,95 @@ describe('PedidoService – dependencia no disponible', () => {
     expect(() => new PedidoService({})).toThrow('Dependencia requerida');
   });
 });
+
+// ─── CONFIRMAR PEDIDO (atajo directo a cocina + resumen acumulado) ──────────
+
+const PIZZA = { id: 1, nombre: 'Pizza', precioBase: 8500, cantidad: 2 };
+const COCA = { id: 2, nombre: 'Coca-Cola', precioBase: 2000, cantidad: 1 };
+
+describe('PedidoService.confirmarPedido – atajo directo a cocina', () => {
+  test('mesa sin pedido: queda En Cocina, ocupada y con sus ítems', () => {
+    const { servicio, pedidos, mesas } = crearServicio();
+    const res = servicio.confirmarPedido({ mesa: 'Mesa 3', items: [PIZZA, COCA] });
+    expect(res.ok).toBe(true);
+    expect(res.estado).toBe('En Cocina 🍳');
+    expect(res.total).toBe(8500 * 2 + 2000);
+    expect(pedidos.obtener('Mesa 3').items).toHaveLength(2);
+    expect(mesas.obtener('Mesa 3').estado).toBe('ocupada');
+  });
+
+  test('mesa con pedido a medias en Recibido: pasa a cocina con los ítems', () => {
+    const { servicio, pedidos } = crearServicio();
+    servicio.actualizarEstado({ mesa: 'Mesa 3', estado: 'Recibido 📝' });
+    const res = servicio.confirmarPedido({ mesa: 'Mesa 3', items: [PIZZA] });
+    expect(res.ok).toBe(true);
+    expect(pedidos.obtener('Mesa 3').estado).toBe('En Cocina 🍳');
+  });
+
+  test('mesa ya en cocina: acumula una nueva ronda sin cambiar el estado', () => {
+    const { servicio } = crearServicio();
+    servicio.confirmarPedido({ mesa: 'Mesa 3', items: [PIZZA] });
+    const res = servicio.confirmarPedido({ mesa: 'Mesa 3', items: [PIZZA, COCA] });
+    expect(res.ok).toBe(true);
+    expect(res.estado).toBe('En Cocina 🍳');
+    expect(res.items.find((i) => i.id === 1).cantidad).toBe(4);
+    expect(res.items.find((i) => i.id === 2).cantidad).toBe(1);
+    expect(res.total).toBe(8500 * 4 + 2000);
+  });
+
+  test('rechaza sin items, cantidades inválidas, mesa inexistente o datos inválidos', () => {
+    const { servicio } = crearServicio();
+    expect(servicio.confirmarPedido({ mesa: 'Mesa 3', items: [] }).tipo).toBe('ENTRADA_INVALIDA');
+    expect(
+      servicio.confirmarPedido({ mesa: 'Mesa 3', items: [{ ...PIZZA, cantidad: 0 }] }).tipo
+    ).toBe('ENTRADA_INVALIDA');
+    expect(servicio.confirmarPedido({ mesa: 'Mesa 11', items: [PIZZA] }).tipo).toBe(
+      'NO_ENCONTRADO'
+    );
+    expect(servicio.confirmarPedido(null).tipo).toBe('ENTRADA_INVALIDA');
+    expect(servicio.confirmarPedido({ mesa: 5, items: [PIZZA] }).tipo).toBe('ENTRADA_INVALIDA');
+  });
+
+  test('con menú inyectado: usa nombre/precio del menú y rechaza agotados e inexistentes', () => {
+    const { MenuItemsEnMemoria } = require('../src/infraestructura/repositorios');
+    const menuItems = new MenuItemsEnMemoria([
+      { id: 1, nombre: 'Pizza', precioBase: 8500, disponible: true },
+      { id: 2, nombre: 'Coca-Cola', precioBase: 2000, disponible: false }
+    ]);
+    const servicio = new PedidoService({
+      pedidos: new PedidosEnMemoria(),
+      mesas: new MesasEnMemoria(10),
+      notificador: new NotificadorEspia(),
+      menuItems
+    });
+    expect(servicio.confirmarPedido({ mesa: 'Mesa 1', items: [{ id: 2, cantidad: 1 }] }).ok).toBe(
+      false
+    );
+    expect(servicio.confirmarPedido({ mesa: 'Mesa 1', items: [{ id: 99, cantidad: 1 }] }).tipo).toBe(
+      'NO_ENCONTRADO'
+    );
+    const ok = servicio.confirmarPedido({ mesa: 'Mesa 1', items: [{ id: 1, cantidad: 3 }] });
+    expect(ok.total).toBe(25500);
+    expect(ok.items[0].nombre).toBe('Pizza');
+  });
+});
+
+describe('PedidoService.obtenerResumen', () => {
+  test('mesa sin pedido: resumen vacío', () => {
+    const { servicio } = crearServicio();
+    expect(servicio.obtenerResumen('Mesa 1')).toEqual({
+      ok: true,
+      mesa: 'Mesa 1',
+      estado: null,
+      items: [],
+      total: 0
+    });
+  });
+
+  test('al quedar Listo el pedido se elimina y el resumen queda vacío', () => {
+    const { servicio } = crearServicio();
+    servicio.confirmarPedido({ mesa: 'Mesa 1', items: [PIZZA] });
+    servicio.actualizarEstado({ mesa: 'Mesa 1', estado: 'Listo 🍽️' });
+    expect(servicio.obtenerResumen('Mesa 1').items).toEqual([]);
+  });
+});
