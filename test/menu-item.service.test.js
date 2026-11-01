@@ -103,3 +103,37 @@ describe('MenuItemService (US-07) - módulo crítico', () => {
     expect(servicio.listarItems().items.length).toBe(2);
   });
 });
+
+describe('MenuItemService.cambiarDisponibilidad (US-04) y consultas', () => {
+  test('marca un ítem como agotado y notifica; nombre y precio no cambian', () => {
+    const { servicio, notificador } = crearEntorno();
+    const r = servicio.cambiarDisponibilidad('1', false);
+    expect(r.ok).toBe(true);
+    expect(r.item).toMatchObject({ nombre: 'Pizza Margarita', precioBase: 8500, disponible: false });
+    expect(notificador.emitir).toHaveBeenCalledWith('menu_actualizado', expect.objectContaining({ accion: 'disponibilidad' }));
+  });
+
+  test('vuelve a dejar disponible un ítem agotado', () => {
+    const { servicio } = crearEntorno();
+    servicio.cambiarDisponibilidad(2, false);
+    expect(servicio.cambiarDisponibilidad(2, true).item.disponible).toBe(true);
+  });
+
+  test.each(['si', 1, null, undefined])('rechaza el valor no booleano %j sin modificar el ítem', (valor) => {
+    const { servicio, menuItems } = crearEntorno();
+    expect(servicio.cambiarDisponibilidad('1', valor).tipo).toBe('ENTRADA_INVALIDA');
+    expect(menuItems.obtener(1).disponible).toBe(true);
+  });
+
+  test('un id inexistente devuelve NO_ENCONTRADO y un id inválido ENTRADA_INVALIDA', () => {
+    const { servicio } = crearEntorno();
+    expect(servicio.cambiarDisponibilidad('99', false).tipo).toBe('NO_ENCONTRADO');
+    expect(servicio.cambiarDisponibilidad('0', false).tipo).toBe('ENTRADA_INVALIDA');
+  });
+
+  test('obtenerItem: id inexistente NO_ENCONTRADO y id inválido ENTRADA_INVALIDA', () => {
+    const { servicio } = crearEntorno();
+    expect(servicio.obtenerItem('99').tipo).toBe('NO_ENCONTRADO');
+    expect(servicio.obtenerItem('abc').tipo).toBe('ENTRADA_INVALIDA');
+  });
+});

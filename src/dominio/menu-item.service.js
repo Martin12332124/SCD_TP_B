@@ -330,6 +330,16 @@ class MenuItemService {
 
   /**
    * Cambia la disponibilidad de un ítem (US-04: marcar/desmarcar "Agotado").
+   *
+   * Precondiciones:
+   *   1. id es un entero positivo y el ítem existe (si no → NO_ENCONTRADO).
+   *   2. disponible es estrictamente un booleano.
+   *
+   * Postcondiciones:
+   *   1. El ítem queda con la disponibilidad indicada; nombre y precio no cambian.
+   *   2. Se emite 'menu_actualizado' con { accion: 'disponibilidad', item }.
+   *   3. Si se rechaza, no se modifica ni se crea ningún ítem.
+   *
    * @param {string|number} id
    * @param {boolean} disponible
    * @returns {{ ok: true, item: object } | { ok: false, tipo: string, error: string }}
@@ -367,6 +377,10 @@ class MenuItemService {
 
   /**
    * Obtiene un ítem por id.
+   *
+   * Precondición: id es un entero positivo. Postcondición: solo lectura,
+   * un id inexistente devuelve NO_ENCONTRADO sin crear datos.
+   *
    * @param {string} id
    * @returns {{ ok: true, item: object } | { ok: false, tipo: string, error: string }}
    */

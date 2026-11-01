@@ -4,6 +4,10 @@
 
 const { verificarConsistenciaMesasPedidos } = require('./consistencia');
 
+/** Rango permitido de unidades por producto en una misma confirmación (US-13 CA2 y CA3). */
+const CANTIDAD_MINIMA = 1;
+const CANTIDAD_MAXIMA = 99;
+
 const ESTADOS_VALIDOS = ['Recibido 📝', 'En Cocina 🍳', 'Listo 🍽️'];
 
 // Mapa de transiciones permitidas:
@@ -161,6 +165,12 @@ class PedidoService {
 
   /**
    * Valida y normaliza los ítems de un pedido: [{ id, cantidad }, ...].
+   *
+   * Precondición: "items" es un arreglo no vacío y cada elemento tiene una
+   *   cantidad entera entre CANTIDAD_MINIMA (1) y CANTIDAD_MAXIMA (99).
+   * Postcondición: devuelve los ítems normalizados { id, nombre, precioBase, cantidad }
+   *   sin modificar ningún repositorio.
+   *
    * Si hay repositorio de menú, toma nombre y precio del menú y rechaza
    * ítems inexistentes o agotados. Sin menú, usa nombre y precioBase recibidos.
    * @returns {{ ok: true, items: object[] } | { ok: false, tipo: string, error: string }}
@@ -176,11 +186,16 @@ class PedidoService {
 
     const normalizados = [];
     for (const it of items) {
-      if (!it || !Number.isInteger(it.cantidad) || it.cantidad <= 0) {
+      if (
+        !it ||
+        !Number.isInteger(it.cantidad) ||
+        it.cantidad < CANTIDAD_MINIMA ||
+        it.cantidad > CANTIDAD_MAXIMA
+      ) {
         return {
           ok: false,
           tipo: 'ENTRADA_INVALIDA',
-          error: 'La cantidad de cada producto debe ser un entero mayor a 0.'
+          error: `La cantidad de cada producto debe ser un entero de ${CANTIDAD_MINIMA} a ${CANTIDAD_MAXIMA}.`
         };
       }
 
@@ -233,6 +248,20 @@ class PedidoService {
    * - Mesa que ya tiene un pedido "En Cocina 🍳": los ítems nuevos se SUMAN
    *   a lo acumulado (nueva ronda) y el estado no cambia.
    * - Los ítems repetidos se acumulan por id (las cantidades se suman).
+   *
+   * Precondiciones:
+   *   1. "datos" es un objeto con "mesa" de formato "Mesa N" (la mesa existe)
+   *      e "items" no vacío, con cantidades enteras de 1 a 99 por línea.
+   *   2. Si hay menú inyectado, cada ítem existe y está disponible.
+   *   3. La transición hacia "En Cocina 🍳" es válida desde el estado actual.
+   *
+   * Postcondiciones:
+   *   1. El pedido de la mesa queda "En Cocina 🍳" con los ítems acumulados
+   *      (nombre y precio tomados del menú en ese momento) y la mesa "ocupada".
+   *   2. Se emite "pedido_items_actualizado" { mesa }; quien llamó recibe el resumen.
+   *   3. Si se rechaza la operación, no se modifica ningún pedido.
+   *
+   * Invariante: el total devuelto es la suma de precioBase × cantidad de los ítems.
    *
    * @param {{ mesa: any, items: Array<{ id, cantidad }> }} datos
    * @returns {{ ok: true, mesa: string, estado: string, items: object[], total: number }
@@ -301,6 +330,11 @@ class PedidoService {
 
   /**
    * Resumen del pedido vigente de una mesa (ítems acumulados y total).
+   *
+   * Precondición: "mesa" es el identificador "Mesa N".
+   * Postcondición: consulta de solo lectura; sin pedido vigente devuelve
+   *   estado null, items [] y total 0, sin crear datos.
+   *
    * @param {string} mesa - Identificador "Mesa N"
    * @returns {{ ok: true, mesa: string, estado: string|null, items: object[], total: number }}
    */
@@ -312,4 +346,10 @@ class PedidoService {
   }
 }
 
-module.exports = { PedidoService, ESTADOS_VALIDOS, TRANSICIONES };
+module.exports = {
+  PedidoService,
+  ESTADOS_VALIDOS,
+  TRANSICIONES,
+  CANTIDAD_MINIMA,
+  CANTIDAD_MAXIMA
+};
