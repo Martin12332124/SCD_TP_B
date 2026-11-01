@@ -255,6 +255,25 @@ describe('PedidoService.confirmarPedido – atajo directo a cocina', () => {
     expect(servicio.confirmarPedido({ mesa: 5, items: [PIZZA] }).tipo).toBe('ENTRADA_INVALIDA');
   });
 
+  test('límites de cantidad: acepta 1 y 99, rechaza 0, 100, decimales y texto', () => {
+    const { servicio } = crearServicio();
+    expect(servicio.confirmarPedido({ mesa: 'Mesa 1', items: [{ ...COCA, cantidad: 1 }] }).ok).toBe(true);
+    expect(servicio.confirmarPedido({ mesa: 'Mesa 2', items: [{ ...COCA, cantidad: 99 }] }).ok).toBe(true);
+    for (const cantidad of [0, 100, 1.5, '3', -1, null]) {
+      const res = servicio.confirmarPedido({ mesa: 'Mesa 3', items: [{ ...COCA, cantidad }] });
+      expect(res.ok).toBe(false);
+      expect(res.tipo).toBe('ENTRADA_INVALIDA');
+      expect(res.error).toMatch(/entero de 1 a 99/);
+    }
+  });
+
+  test('REGRESIÓN: una cantidad inválida no deja pedido ni ocupa la mesa', () => {
+    const { servicio, pedidos, mesas } = crearServicio();
+    servicio.confirmarPedido({ mesa: 'Mesa 4', items: [{ ...COCA, cantidad: 100 }] });
+    expect(pedidos.obtener('Mesa 4')).toBeFalsy();
+    expect(mesas.obtener('Mesa 4').estado).toBe('libre');
+  });
+
   test('con menú inyectado: usa nombre/precio del menú y rechaza agotados e inexistentes', () => {
     const { MenuItemsEnMemoria } = require('../src/infraestructura/repositorios');
     const menuItems = new MenuItemsEnMemoria([
