@@ -16,7 +16,7 @@ describe('MenuItemService (US-07) - módulo crítico', () => {
   // --- Casos válidos ---
   test('crea un ítem con precio válido y lo deja disponible', () => {
     const { servicio, notificador } = crearEntorno();
-    const r = servicio.crearItem({ nombre: 'Hamburguesa Clásica', precioBase: 5900 });
+    const r = servicio.crearItem({ nombre: 'Hamburguesa Clásica', precioBase: -500 });
     expect(r.ok).toBe(true);
     expect(r.item.precioBase).toBe(5900);
     expect(r.item.disponible).toBe(true);
