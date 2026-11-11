@@ -14,6 +14,7 @@ const { PedidosEnMemoria, MesasEnMemoria, MenuItemsEnMemoria } = require('./infr
 const { SocketNotificador } = require('./infraestructura/notificador');
 const { crearMesasRouter } = require('./presentacion/mesas.router');
 const { crearMenuItemsRouter } = require('./presentacion/menu-items.router');
+const { registrarHandlersSocket } = require('./presentacion/socket.handlers');
 
 function crearApp() {
   const app = express();
@@ -63,90 +64,9 @@ function crearApp() {
     res.send('Servidor del Sistema de Pedidos del Restaurante operativo.');
   });
 
-  // ── Socket.io: comunicación en tiempo real ────────────────────────
-  io.on('connection', (socket) => {
-    console.log(`[SOCKET] Nuevo cliente conectado. ID: ${socket.id}`);
+// ── Socket.io: comunicación en tiempo real (ver presentacion/socket.handlers.js)
+  registrarHandlersSocket(io, { pedidoService, mesaService, mesas });
 
-    // Enviar estado inicial de mesas al cliente que se conecta
-    socket.emit('estado_mesas', mesas.listar());
-
-    // Recibir actualización de pedido desde el frontend
-    socket.on('actualizar_pedido', (datos) => {
-      console.log('\n[SOCKET] Intento de actualización de pedido:', datos);
-
-      try {
-        const resultado = pedidoService.actualizarEstado(datos);
-
-        if (resultado.ok) {
-          console.log(`✅ VALIDADO: ${resultado.mesa} → ${resultado.estado}`);
-          // Responder al emisor con confirmación
-          socket.emit('respuesta_pedido', resultado);
-        } else {
-          console.error(`❌ RECHAZADO [${resultado.tipo}]: ${resultado.error}`);
-          socket.emit('respuesta_pedido', resultado);
-        }
-      } catch (error) {
-        // Dependencia no disponible: propagar el error sin ocultar
-        console.error(`💥 ERROR INTERNO: ${error.message}`);
-        socket.emit('respuesta_pedido', {
-          ok: false,
-          tipo: 'ERROR_INTERNO',
-          error: error.message
-        });
-      }
-    });
-
-    // Atajo: confirmar el pedido de una mesa y enviarlo directo a cocina
-    socket.on('confirmar_pedido', (datos) => {
-      console.log('\n[SOCKET] Confirmación de pedido (directo a cocina):', datos);
-
-      try {
-        const resultado = pedidoService.confirmarPedido(datos);
-        if (!resultado.ok) {
-          console.error(`❌ RECHAZADO [${resultado.tipo}]: ${resultado.error}`);
-        }
-        socket.emit('respuesta_pedido', resultado);
-      } catch (error) {
-        console.error(`💥 ERROR INTERNO: ${error.message}`);
-        socket.emit('respuesta_pedido', {
-          ok: false,
-          tipo: 'ERROR_INTERNO',
-          error: error.message
-        });
-      }
-    });
-
-    socket.on('disconnect', () => {
-      console.log(`[SOCKET] Cliente desconectado. ID: ${socket.id}`);
-    });
-
-    // ── Operación 3 (US-05): Traslado de pedido entre mesas ──────────
-    socket.on('trasladar_pedido', (datos) => {
-      console.log('\n[SOCKET] Intento de traslado de pedido:', datos);
-
-      try {
-        const resultado = mesaService.trasladarPedido(datos);
-
-        if (resultado.ok) {
-          console.log(
-            `✅ TRASLADO OK: ${resultado.origen} → ${resultado.destino} (${resultado.estado})`
-          );
-          socket.emit('respuesta_traslado', resultado);
-        } else {
-          console.error(`❌ TRASLADO RECHAZADO [${resultado.tipo}]: ${resultado.error}`);
-          socket.emit('respuesta_traslado', resultado);
-        }
-      } catch (error) {
-        // Dependencia no disponible: propagar el error sin ocultar
-        console.error(`💥 ERROR INTERNO EN TRASLADO: ${error.message}`);
-        socket.emit('respuesta_traslado', {
-          ok: false,
-          tipo: 'ERROR_INTERNO',
-          error: error.message
-        });
-      }
-    });
-  });
 
   // ── Middleware de errores de Express 5 (DESPUÉS de montar rutas) ───
   // Captura JSON malformado y errores internos; devuelve JSON, no HTML.
