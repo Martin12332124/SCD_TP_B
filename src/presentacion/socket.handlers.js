@@ -4,6 +4,43 @@
 // Antes este código vivía dentro de app.js, mezclado con la composición de la app.
 
 /**
+ * Ejecuta una operación de dominio y responde al cliente por `eventoRespuesta`.
+ * Centraliza el try/catch que antes estaba copiado en cada evento.
+ * - Si la operación devuelve { ok: true } → registra el éxito y lo emite.
+ * - Si devuelve { ok: false, tipo, error } → registra el rechazo y lo emite.
+ * - Si lanza una excepción → emite { ok: false, tipo: 'ERROR_INTERNO', error } en vez de caerse.
+ *
+ * @param {object} socket - socket del cliente (debe tener emit)
+ * @param {object} opciones
+ * @param {string} opciones.eventoRespuesta - evento por el que se responde
+ * @param {Function} opciones.operacion - función sin argumentos que llama al servicio
+ * @param {Function} [opciones.alExito] - log opcional cuando resultado.ok es true
+ * @param {string} [opciones.prefijoRechazo] - texto antes de "RECHAZADO" en el log
+ * @param {string} [opciones.sufijoError] - texto después de "ERROR INTERNO" en el log
+ * @returns {object} el resultado emitido
+ */
+function responderSeguro(
+  socket,
+  { eventoRespuesta, operacion, alExito, prefijoRechazo = '', sufijoError = '' }
+) {
+  let resultado;
+  try {
+    resultado = operacion();
+    if (resultado.ok) {
+      if (alExito) alExito(resultado);
+    } else {
+      console.error(`❌ ${prefijoRechazo}RECHAZADO [${resultado.tipo}]: ${resultado.error}`);
+    }
+  } catch (error) {
+    // Dependencia no disponible: propagar el error sin ocultar
+    console.error(`💥 ERROR INTERNO${sufijoError}: ${error.message}`);
+    resultado = { ok: false, tipo: 'ERROR_INTERNO', error: error.message };
+  }
+  socket.emit(eventoRespuesta, resultado);
+  return resultado;
+}
+
+/**
  * Registra los eventos socket de la aplicación.
  * @param {import('socket.io').Server} io
  * @param {object} deps
@@ -21,47 +58,20 @@ function registrarHandlersSocket(io, { pedidoService, mesaService, mesas }) {
     // Recibir actualización de pedido desde el frontend
     socket.on('actualizar_pedido', (datos) => {
       console.log('\n[SOCKET] Intento de actualización de pedido:', datos);
-
-      try {
-        const resultado = pedidoService.actualizarEstado(datos);
-
-        if (resultado.ok) {
-          console.log(`✅ VALIDADO: ${resultado.mesa} → ${resultado.estado}`);
-          // Responder al emisor con confirmación
-          socket.emit('respuesta_pedido', resultado);
-        } else {
-          console.error(`❌ RECHAZADO [${resultado.tipo}]: ${resultado.error}`);
-          socket.emit('respuesta_pedido', resultado);
-        }
-      } catch (error) {
-        // Dependencia no disponible: propagar el error sin ocultar
-        console.error(`💥 ERROR INTERNO: ${error.message}`);
-        socket.emit('respuesta_pedido', {
-          ok: false,
-          tipo: 'ERROR_INTERNO',
-          error: error.message
-        });
-      }
+      responderSeguro(socket, {
+        eventoRespuesta: 'respuesta_pedido',
+        operacion: () => pedidoService.actualizarEstado(datos),
+        alExito: (r) => console.log(`✅ VALIDADO: ${r.mesa} → ${r.estado}`)
+      });
     });
 
     // Atajo: confirmar el pedido de una mesa y enviarlo directo a cocina
     socket.on('confirmar_pedido', (datos) => {
       console.log('\n[SOCKET] Confirmación de pedido (directo a cocina):', datos);
-
-      try {
-        const resultado = pedidoService.confirmarPedido(datos);
-        if (!resultado.ok) {
-          console.error(`❌ RECHAZADO [${resultado.tipo}]: ${resultado.error}`);
-        }
-        socket.emit('respuesta_pedido', resultado);
-      } catch (error) {
-        console.error(`💥 ERROR INTERNO: ${error.message}`);
-        socket.emit('respuesta_pedido', {
-          ok: false,
-          tipo: 'ERROR_INTERNO',
-          error: error.message
-        });
-      }
+      responderSeguro(socket, {
+        eventoRespuesta: 'respuesta_pedido',
+        operacion: () => pedidoService.confirmarPedido(datos)
+      });
     });
 
     socket.on('disconnect', () => {
@@ -71,30 +81,15 @@ function registrarHandlersSocket(io, { pedidoService, mesaService, mesas }) {
     // ── Operación 3 (US-05): Traslado de pedido entre mesas ──────────
     socket.on('trasladar_pedido', (datos) => {
       console.log('\n[SOCKET] Intento de traslado de pedido:', datos);
-
-      try {
-        const resultado = mesaService.trasladarPedido(datos);
-
-        if (resultado.ok) {
-          console.log(
-            `✅ TRASLADO OK: ${resultado.origen} → ${resultado.destino} (${resultado.estado})`
-          );
-          socket.emit('respuesta_traslado', resultado);
-        } else {
-          console.error(`❌ TRASLADO RECHAZADO [${resultado.tipo}]: ${resultado.error}`);
-          socket.emit('respuesta_traslado', resultado);
-        }
-      } catch (error) {
-        // Dependencia no disponible: propagar el error sin ocultar
-        console.error(`💥 ERROR INTERNO EN TRASLADO: ${error.message}`);
-        socket.emit('respuesta_traslado', {
-          ok: false,
-          tipo: 'ERROR_INTERNO',
-          error: error.message
-        });
-      }
+      responderSeguro(socket, {
+        eventoRespuesta: 'respuesta_traslado',
+        operacion: () => mesaService.trasladarPedido(datos),
+        alExito: (r) => console.log(`✅ TRASLADO OK: ${r.origen} → ${r.destino} (${r.estado})`),
+        prefijoRechazo: 'TRASLADO ',
+        sufijoError: ' EN TRASLADO'
+      });
     });
   });
 }
 
-module.exports = { registrarHandlersSocket };
+module.exports = { registrarHandlersSocket, responderSeguro };
