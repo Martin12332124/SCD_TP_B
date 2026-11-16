@@ -89,7 +89,13 @@ describe('API de mesas (US-08 y US-09)', () => {
 describe('API de mesas: estado del pedido en la lista', () => {
   test('GET /api/mesas incluye estadoPedido: null en las mesas sin pedido', async () => {
     const { mesas } = (await llamar('GET', '/api/mesas')).json;
-    expect(mesas[0]).toEqual({ id: 'Mesa 1', numero: 1, estado: 'libre', estadoPedido: null });
+    expect(mesas[0]).toEqual({
+      id: 'Mesa 1',
+      numero: 1,
+      estado: 'libre',
+      estadoPedido: null,
+      pedidoDesde: null
+    });
     expect(mesas.every((m) => m.estadoPedido === null)).toBe(true);
   });
 
@@ -110,7 +116,8 @@ describe('API de mesas: estado del pedido en la lista', () => {
       id: 'Mesa 5',
       numero: 5,
       estado: 'ocupada',
-      estadoPedido: 'En Cocina 🍳'
+      estadoPedido: 'En Cocina 🍳',
+      pedidoDesde: expect.any(String)
     });
   });
 });

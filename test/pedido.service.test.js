@@ -152,7 +152,11 @@ describe('PedidoService.actualizarEstado – postcondiciones', () => {
     servicio.actualizarEstado({ mesa: 'Mesa 1', estado: 'En Cocina 🍳' });
     servicio.actualizarEstado({ mesa: 'Mesa 1', estado: 'Listo 🍽️' });
     expect(mesas.obtener('Mesa 1').estado).toBe('ocupada');
-    expect(pedidos.obtener('Mesa 1')).toEqual({ mesa: 'Mesa 1', estado: 'Listo 🍽️' });
+    expect(pedidos.obtener('Mesa 1')).toEqual({
+      mesa: 'Mesa 1',
+      estado: 'Listo 🍽️',
+      estadoDesde: expect.any(String)
+    });
   });
 
   test('marcar Listo emite cambio_estado_pedido y no vuelve a emitir estado_mesas', () => {
@@ -345,5 +349,64 @@ describe('PedidoService.obtenerResumen', () => {
     expect(ronda.items[0].cantidad).toBe(PIZZA.cantidad * 2);
     expect(ronda.total).toBe(PIZZA.precioBase * PIZZA.cantidad * 2);
     expect(mesas.obtener('Mesa 1').estado).toBe('ocupada');
+  });
+});
+
+// ─── HORA DEL ÚLTIMO CAMBIO DE ESTADO (temporizadores de las comandas) ───────
+
+describe('PedidoService: estadoDesde (hora del último cambio de estado)', () => {
+  /** Reloj falso: cada llamada devuelve la hora siguiente de la lista. */
+  function crearConReloj(horas) {
+    const pedidos = new PedidosEnMemoria();
+    const mesas = new MesasEnMemoria(10);
+    const notificador = new NotificadorEspia();
+    const pendientes = [...horas];
+    const reloj = jest.fn(() => pendientes.shift());
+    const servicio = new PedidoService({ pedidos, mesas, notificador, reloj });
+    return { servicio, pedidos, reloj };
+  }
+
+  test('cada cambio de estado guarda la hora en que ocurrió', () => {
+    const { servicio, pedidos } = crearConReloj([
+      '2026-11-16T12:00:00.000Z',
+      '2026-11-16T12:05:00.000Z',
+      '2026-11-16T12:20:00.000Z'
+    ]);
+    servicio.actualizarEstado({ mesa: 'Mesa 3', estado: 'Recibido 📝' });
+    expect(pedidos.obtener('Mesa 3').estadoDesde).toBe('2026-11-16T12:00:00.000Z');
+    servicio.actualizarEstado({ mesa: 'Mesa 3', estado: 'En Cocina 🍳' });
+    expect(pedidos.obtener('Mesa 3').estadoDesde).toBe('2026-11-16T12:05:00.000Z');
+    servicio.actualizarEstado({ mesa: 'Mesa 3', estado: 'Listo 🍽️' });
+    expect(pedidos.obtener('Mesa 3').estadoDesde).toBe('2026-11-16T12:20:00.000Z');
+  });
+
+  test('una transición rechazada no cambia la hora', () => {
+    const { servicio, pedidos, reloj } = crearConReloj(['2026-11-16T12:00:00.000Z']);
+    servicio.actualizarEstado({ mesa: 'Mesa 3', estado: 'Recibido 📝' });
+    servicio.actualizarEstado({ mesa: 'Mesa 3', estado: 'Listo 🍽️' }); // salto no permitido
+    expect(pedidos.obtener('Mesa 3').estadoDesde).toBe('2026-11-16T12:00:00.000Z');
+    expect(reloj).toHaveBeenCalledTimes(1);
+  });
+
+  test('sumar productos a un pedido que ya está en cocina no reinicia su tiempo', () => {
+    const { servicio, pedidos } = crearConReloj([
+      '2026-11-16T12:00:00.000Z',
+      '2026-11-16T12:00:01.000Z',
+      '2026-11-16T12:30:00.000Z'
+    ]);
+    servicio.confirmarPedido({ mesa: 'Mesa 1', items: [PIZZA] });
+    const enCocinaDesde = pedidos.obtener('Mesa 1').estadoDesde;
+    servicio.confirmarPedido({ mesa: 'Mesa 1', items: [COCA] });
+    expect(pedidos.obtener('Mesa 1').estadoDesde).toBe(enCocinaDesde);
+    expect(pedidos.obtener('Mesa 1').items).toHaveLength(2);
+  });
+
+  test('sin reloj inyectado usa la hora actual en formato ISO', () => {
+    const { servicio, pedidos } = crearServicio();
+    const antes = Date.now();
+    servicio.actualizarEstado({ mesa: 'Mesa 2', estado: 'Recibido 📝' });
+    const desde = Date.parse(pedidos.obtener('Mesa 2').estadoDesde);
+    expect(desde).toBeGreaterThanOrEqual(antes);
+    expect(desde).toBeLessThanOrEqual(Date.now());
   });
 });

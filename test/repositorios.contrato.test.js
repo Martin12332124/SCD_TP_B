@@ -89,6 +89,19 @@ describe.each(Object.keys(implementaciones))('Contrato de repositorios (%s)', (n
       });
     });
 
+    test('guardar y obtener conserva estadoDesde', () => {
+      repos.pedidos.guardar('Mesa 1', {
+        mesa: 'Mesa 1',
+        estado: 'En Cocina 🍳',
+        estadoDesde: '2026-11-16T12:00:00.000Z'
+      });
+      expect(repos.pedidos.obtener('Mesa 1')).toEqual({
+        mesa: 'Mesa 1',
+        estado: 'En Cocina 🍳',
+        estadoDesde: '2026-11-16T12:00:00.000Z'
+      });
+    });
+
     test('eliminar quita el pedido', () => {
       repos.pedidos.guardar('Mesa 3', { mesa: 'Mesa 3', estado: 'Recibido 📝', items: ITEMS });
       repos.pedidos.eliminar('Mesa 3');

@@ -289,3 +289,21 @@ describe('MesaService.trasladarPedido con pedido servido ("Listo 🍽️")', () 
     expect(mesas.obtener('Mesa 3').estado).toBe('libre');
   });
 });
+
+describe('MesaService.trasladarPedido: el tiempo del pedido no se reinicia', () => {
+  test('el pedido trasladado conserva su estadoDesde', () => {
+    const pedidos = new PedidosEnMemoria();
+    const mesas = new MesasEnMemoria(10);
+    const servicio = new MesaService({ pedidos, mesas, notificador: new NotificadorEspia() });
+    mesas.ocupar('Mesa 3');
+    pedidos.guardar('Mesa 3', {
+      mesa: 'Mesa 3',
+      estado: 'En Cocina 🍳',
+      estadoDesde: '2026-11-16T12:00:00.000Z'
+    });
+
+    servicio.trasladarPedido({ origen: 3, destino: 6 });
+
+    expect(pedidos.obtener('Mesa 6').estadoDesde).toBe('2026-11-16T12:00:00.000Z');
+  });
+});

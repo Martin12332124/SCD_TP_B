@@ -176,7 +176,13 @@ describe('Socket.io: estado del pedido en estado_mesas', () => {
     });
     const mesas = await esperar(segundo, 'estado_mesas');
     segundo.close();
-    expect(mesas[0]).toEqual({ id: 'Mesa 1', numero: 1, estado: 'libre', estadoPedido: null });
+    expect(mesas[0]).toEqual({
+      id: 'Mesa 1',
+      numero: 1,
+      estado: 'libre',
+      estadoPedido: null,
+      pedidoDesde: null
+    });
   });
 
   test('al tomar un pedido, estado_mesas llega con el estado del pedido de esa mesa', async () => {
@@ -187,7 +193,8 @@ describe('Socket.io: estado del pedido en estado_mesas', () => {
       id: 'Mesa 4',
       numero: 4,
       estado: 'ocupada',
-      estadoPedido: 'Recibido 📝'
+      estadoPedido: 'Recibido 📝',
+      pedidoDesde: expect.any(String)
     });
   });
 });

@@ -31,9 +31,9 @@ describe.each(Object.keys(implementaciones))('MesasConEstadoPedido (%s)', (nombr
 
   test('sin pedidos, todas las mesas llevan estadoPedido null', () => {
     expect(mesas.listar()).toEqual([
-      { id: 'Mesa 1', numero: 1, estado: 'libre', estadoPedido: null },
-      { id: 'Mesa 2', numero: 2, estado: 'libre', estadoPedido: null },
-      { id: 'Mesa 3', numero: 3, estado: 'libre', estadoPedido: null }
+      { id: 'Mesa 1', numero: 1, estado: 'libre', estadoPedido: null, pedidoDesde: null },
+      { id: 'Mesa 2', numero: 2, estado: 'libre', estadoPedido: null, pedidoDesde: null },
+      { id: 'Mesa 3', numero: 3, estado: 'libre', estadoPedido: null, pedidoDesde: null }
     ]);
   });
 
@@ -56,7 +56,8 @@ describe.each(Object.keys(implementaciones))('MesasConEstadoPedido (%s)', (nombr
       id: 'Mesa 2',
       numero: 2,
       estado: 'ocupada',
-      estadoPedido: 'En Cocina 🍳'
+      estadoPedido: 'En Cocina 🍳',
+      pedidoDesde: null
     });
     expect(mesas.obtener('Mesa 1').estadoPedido).toBeNull();
     expect(mesas.obtener('Mesa 9')).toBeNull();
@@ -79,7 +80,8 @@ describe.each(Object.keys(implementaciones))('MesasConEstadoPedido (%s)', (nombr
       id: 'Mesa 7',
       numero: 7,
       estado: 'libre',
-      estadoPedido: null
+      estadoPedido: null,
+      pedidoDesde: null
     });
     expect(base.obtener('Mesa 7')).not.toBeNull();
 

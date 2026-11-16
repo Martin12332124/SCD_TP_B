@@ -20,9 +20,12 @@ CREATE TABLE IF NOT EXISTS menu_items (
 
 -- Pedido vigente de cada mesa (como máximo uno por mesa). El estado se guarda
 -- tal cual, con su emoji (ej. 'Recibido 📝'); las reglas de estado viven en el dominio.
+-- estado_desde: fecha y hora ISO 8601 (UTC) en que el pedido pasó a su estado actual.
+-- Las bases creadas antes de esta columna la reciben con ALTER TABLE (ver conexion.js).
 CREATE TABLE IF NOT EXISTS pedidos (
-  mesa_id TEXT PRIMARY KEY REFERENCES mesas (id),
-  estado  TEXT NOT NULL
+  mesa_id      TEXT PRIMARY KEY REFERENCES mesas (id),
+  estado       TEXT NOT NULL,
+  estado_desde TEXT
 );
 
 -- Ítems de un pedido. nombre y precio_base son una copia del menú al momento de

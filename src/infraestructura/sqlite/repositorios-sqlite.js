@@ -7,22 +7,25 @@
 
 /**
  * Repositorio de pedidos vigentes, indexados por mesa (ej. "Mesa 3").
- * Un pedido es { mesa, estado, items? }; items se guarda en la tabla pedido_items.
+ * Un pedido es { mesa, estado, estadoDesde?, items? }; items se guarda en la tabla
+ * pedido_items. estadoDesde (hora del último cambio de estado) solo aparece si se guardó.
  */
 class PedidosSQLite {
   /** @param {import('better-sqlite3').Database} db */
   constructor(db) {
     this._db = db;
     this._sql = {
-      obtener: db.prepare('SELECT mesa_id, estado FROM pedidos WHERE mesa_id = ?'),
-      todos: db.prepare('SELECT mesa_id, estado FROM pedidos ORDER BY mesa_id'),
+      obtener: db.prepare('SELECT mesa_id, estado, estado_desde FROM pedidos WHERE mesa_id = ?'),
+      todos: db.prepare('SELECT mesa_id, estado, estado_desde FROM pedidos ORDER BY mesa_id'),
       items: db.prepare(
         `SELECT item_id AS id, nombre, precio_base AS precioBase, cantidad
          FROM pedido_items WHERE mesa_id = ? ORDER BY posicion`
       ),
       upsert: db.prepare(
-        `INSERT INTO pedidos (mesa_id, estado) VALUES (?, ?)
-         ON CONFLICT (mesa_id) DO UPDATE SET estado = excluded.estado`
+        `INSERT INTO pedidos (mesa_id, estado, estado_desde) VALUES (?, ?, ?)
+         ON CONFLICT (mesa_id) DO UPDATE SET
+           estado = excluded.estado,
+           estado_desde = excluded.estado_desde`
       ),
       borrarItems: db.prepare('DELETE FROM pedido_items WHERE mesa_id = ?'),
       insertarItem: db.prepare(
@@ -34,7 +37,7 @@ class PedidosSQLite {
 
     // Guardar toca dos tablas: se hace en una transacción para que no quede a medias.
     this._guardar = db.transaction((mesa, pedido) => {
-      this._sql.upsert.run(mesa, pedido.estado);
+      this._sql.upsert.run(mesa, pedido.estado, pedido.estadoDesde ?? null);
       this._sql.borrarItems.run(mesa);
       (pedido.items || []).forEach((item, posicion) => {
         this._sql.insertarItem.run(
@@ -52,6 +55,7 @@ class PedidosSQLite {
   /** Arma el objeto pedido. Sin ítems no incluye la propiedad items (igual que en memoria). */
   _armar(fila) {
     const pedido = { mesa: fila.mesa_id, estado: fila.estado };
+    if (fila.estado_desde) pedido.estadoDesde = fila.estado_desde;
     const items = this._sql.items.all(fila.mesa_id);
     if (items.length > 0) pedido.items = items;
     return pedido;

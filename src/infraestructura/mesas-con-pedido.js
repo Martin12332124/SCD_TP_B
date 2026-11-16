@@ -1,7 +1,8 @@
 // src/infraestructura/mesas-con-pedido.js
 // Decorador del repositorio de mesas: a cada mesa que devuelve le agrega el
 // estado de su pedido vigente, en el campo `estadoPedido`
-// ("Recibido 📝", "En Cocina 🍳", "Listo 🍽️" o null si no tiene pedido).
+// ("Recibido 📝", "En Cocina 🍳", "Listo 🍽️" o null si no tiene pedido), y la hora
+// en que el pedido pasó a ese estado, en `pedidoDesde` (ISO 8601, o null si no se sabe).
 //
 // Para qué: el mapa de mesas del frontend muestra en qué va el pedido de cada mesa.
 // Sin este campo tendría que pedir el pedido de cada mesa por separado.
@@ -23,9 +24,13 @@ class MesasConEstadoPedido {
     this._pedidos = pedidos;
   }
 
-  /** Copia de la mesa con el estado de su pedido (null si no tiene). */
+  /** Copia de la mesa con el estado de su pedido y desde cuándo (null si no tiene). */
   _conPedido(mesa, pedido) {
-    return { ...mesa, estadoPedido: pedido ? pedido.estado : null };
+    return {
+      ...mesa,
+      estadoPedido: pedido ? pedido.estado : null,
+      pedidoDesde: (pedido && pedido.estadoDesde) || null
+    };
   }
 
   obtener(mesaId) {

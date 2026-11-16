@@ -36,7 +36,13 @@ class PedidoService {
    *   - mesas:       repositorio de mesas   (obtener, ocupar, liberar, listar)
    *   - notificador: gateway de tiempo real  (emitir)
    */
-  constructor({ pedidos, mesas, notificador, menuItems = null }) {
+  constructor({
+    pedidos,
+    mesas,
+    notificador,
+    menuItems = null,
+    reloj = () => new Date().toISOString()
+  }) {
     if (!pedidos) throw new Error('Dependencia requerida: pedidos');
     if (!mesas) throw new Error('Dependencia requerida: mesas');
     if (!notificador) throw new Error('Dependencia requerida: notificador');
@@ -45,6 +51,8 @@ class PedidoService {
     this.notificador = notificador;
     // Opcional: si se inyecta, los ítems de confirmarPedido se validan contra el menú
     this.menuItems = menuItems;
+    // Hora actual en ISO 8601. Se inyecta para que los tests controlen el tiempo.
+    this.reloj = reloj;
   }
 
   /**
@@ -140,9 +148,14 @@ class PedidoService {
 
     // ── Procesamiento ───────────────────────────────────────────────
 
-    // Guardar el nuevo estado del pedido
-    // Se conservan los ítems ya acumulados en el pedido vigente (si los hay)
-    this.pedidos.guardar(mesa, { ...(pedidoActual || {}), mesa, estado });
+    // Guardar el nuevo estado del pedido y la hora del cambio (estadoDesde), que usan
+    // los temporizadores de las comandas. Se conservan los ítems ya acumulados.
+    this.pedidos.guardar(mesa, {
+      ...(pedidoActual || {}),
+      mesa,
+      estado,
+      estadoDesde: this.reloj()
+    });
 
     // Si el estado es "Recibido 📝", la mesa se ocupa
     let mesaCambio = false;
