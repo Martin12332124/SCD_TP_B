@@ -142,3 +142,9 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Base de datos SQLite local (ver docs/persistencia-sqlite.md)
+data/
+*.db
+*.db-wal
+*.db-shm
