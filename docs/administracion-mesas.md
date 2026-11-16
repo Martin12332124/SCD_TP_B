@@ -247,3 +247,35 @@ Más el commit de esta documentación: `docs: documentar la administración de m
   solo se recupera agregando la 7 con número.
 - **No se probó:** varios clientes agregando la misma mesa al mismo tiempo (la clave primaria lo
   impediría y el segundo recibiría `DUPLICADO`, pero no hay un test con dos clientes simultáneos).
+
+## 9. Segunda iteración: hora del último cambio de estado
+
+Commit `1c52921`. El frontend reemplazó la franja "Último cambio" (que mostraba solo una mesa y no
+se enteraba de los traslados) por un riel con **todas** las comandas en curso, cada una con su
+temporizador. Para que esos tiempos sean correctos aunque se recargue la página, se conecte otra
+tablet o se reinicie el servidor, la hora tiene que venir del backend.
+
+- **Dominio:** `PedidoService.actualizarEstado` guarda `estadoDesde` (ISO 8601, UTC) en cada cambio
+  de estado. El reloj se inyecta (`reloj = () => new Date().toISOString()`) para que los tests
+  controlen el tiempo. Sumar productos a un pedido en cocina y trasladarlo **no** reinician el
+  tiempo (el traslado copia el pedido completo).
+- **Esquema (aditivo):** columna `pedidos.estado_desde TEXT`. `conexion.js` la agrega con
+  `ALTER TABLE` si la base es anterior; los pedidos que ya existían quedan con `NULL` (el frontend
+  muestra `--:--`). No se borra ni se reescribe nada.
+- **Contrato:** cada mesa de `GET /api/mesas`, `GET /api/mesas/:numero` y `estado_mesas` suma
+  `pedidoDesde` (o `null`). Ningún evento existente cambió de forma: para `cambio_estado_pedido` el
+  frontend toma su propia hora, porque el cambio acaba de ocurrir.
+
+```json
+{ "id": "Mesa 6", "numero": 6, "estado": "ocupada", "estadoPedido": "En Cocina 🍳",
+  "pedidoDesde": "2026-11-16T22:26:32.455Z" }
+```
+
+**Tests:** 311 / 311 (antes de esta iteración, 301). Nuevos: el reloj inyectado en cada cambio,
+una transición rechazada no cambia la hora, una ronda en cocina no la reinicia, el traslado la
+conserva, la migración sobre una base antigua y la hora tras reiniciar. Los únicos tests que se
+ajustaron son 13 de esta misma rama que comparaban la forma exacta del pedido o de la mesa.
+
+**Pendiente:** el temporizador resta la hora de la tablet a la hora del servidor. Si los relojes
+difieren (sin sincronización NTP en la LAN), el tiempo se corre esa diferencia; nunca muestra
+negativos.
