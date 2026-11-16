@@ -106,6 +106,19 @@ npm run build
 npm run test:coverage     # pruebas + cobertura (carpeta coverage/)
 
 ```
+
+### Persistencia de datos
+
+Mesas, menú y pedidos se guardan en una base SQLite local (`better-sqlite3`, ADR-03), así que
+sobreviven a un reinicio del servidor y no necesitan internet. Por defecto el archivo queda en
+`data/restaurante.db` (se crea solo al hacer `npm start`); para usar otro archivo:
+`DB_PATH=/ruta/otra.db npm start`. Para empezar de cero en desarrollo, apaga el servidor y borra
+la carpeta `data/`. Cada operación se guarda en una transacción: o se guarda completa o no se
+guarda nada (REF-09).
+
+Detalles (esquema, decisiones, cómo abrir la base con DB Browser for SQLite):
+[docs/persistencia-sqlite.md](docs/persistencia-sqlite.md).
+
 ---
 
 ## REQUISITOS PREVIOS (Hacer esto antes de tocar el proyecto)
