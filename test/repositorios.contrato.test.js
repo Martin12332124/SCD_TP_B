@@ -256,4 +256,21 @@ describe('Repositorios SQLite: detalles propios', () => {
     expect(menu.obtener(2).disponible).toBe(false);
     expect(menu.obtener(1).disponible).toBe(true);
   });
+
+  test('las mesas iniciales se crean solo si la tabla está vacía', () => {
+    // Simula que el restaurante quitó dos mesas y ocupó otra
+    db.prepare("DELETE FROM mesas WHERE id IN ('Mesa 9', 'Mesa 10')").run();
+    mesas.ocupar('Mesa 3');
+
+    // Un nuevo arranque vuelve a construir el repositorio sobre la misma base
+    const trasReinicio = new MesasSQLite(db, 10);
+    expect(trasReinicio.listar()).toHaveLength(8);
+    expect(trasReinicio.obtener('Mesa 9')).toBeNull();
+    expect(trasReinicio.obtener('Mesa 3').estado).toBe('ocupada');
+  });
+
+  test('con la tabla vacía crea la cantidad de mesas indicada', () => {
+    db.prepare('DELETE FROM mesas').run();
+    expect(new MesasSQLite(db, 4).listar().map((m) => m.numero)).toEqual([1, 2, 3, 4]);
+  });
 });

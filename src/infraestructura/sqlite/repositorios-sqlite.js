@@ -81,29 +81,32 @@ class PedidosSQLite {
 }
 
 /**
- * Repositorio de mesas. Al construirse asegura que existan las mesas 1..cantidad,
- * sin tocar el estado de las que ya estaban (un reinicio no libera mesas ocupadas).
+ * Repositorio de mesas. Las mesas iniciales (1..cantidad) se crean solo si la tabla
+ * está vacía, es decir, la primera vez que se usa la base. En los arranques siguientes
+ * no se toca nada: así un reinicio no libera mesas ocupadas ni vuelve a crear las mesas
+ * que el restaurante haya quitado.
  */
 class MesasSQLite {
   /**
    * @param {import('better-sqlite3').Database} db
-   * @param {number} [cantidad=10]
+   * @param {number} [cantidad=10] - Mesas que se crean si la tabla está vacía
    */
   constructor(db, cantidad = 10) {
     this._sql = {
-      sembrar: db.prepare(
-        "INSERT OR IGNORE INTO mesas (id, numero, estado) VALUES (?, ?, 'libre')"
-      ),
+      contar: db.prepare('SELECT COUNT(*) AS n FROM mesas'),
+      insertar: db.prepare("INSERT INTO mesas (id, numero, estado) VALUES (?, ?, 'libre')"),
       obtener: db.prepare('SELECT id, numero, estado FROM mesas WHERE id = ?'),
       cambiarEstado: db.prepare('UPDATE mesas SET estado = ? WHERE id = ?'),
       listar: db.prepare('SELECT id, numero, estado FROM mesas ORDER BY numero')
     };
 
-    db.transaction(() => {
-      for (let i = 1; i <= cantidad; i++) {
-        this._sql.sembrar.run(`Mesa ${i}`, i);
-      }
-    })();
+    if (this._sql.contar.get().n === 0) {
+      db.transaction(() => {
+        for (let i = 1; i <= cantidad; i++) {
+          this._sql.insertar.run(`Mesa ${i}`, i);
+        }
+      })();
+    }
   }
 
   obtener(mesaId) {

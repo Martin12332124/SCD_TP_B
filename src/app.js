@@ -57,7 +57,7 @@ function crearApp({ rutaDb = ':memory:' } = {}) {
   // Los tres repositorios comparten la misma conexión para que una transacción los abarque.
   const db = abrirBaseDeDatos(rutaDb);
   const pedidos = new PedidosSQLite(db);
-  const mesas = new MesasSQLite(db, 10); // crea las mesas que falten, sin tocar las existentes
+  const mesas = new MesasSQLite(db, 10); // 10 mesas iniciales, solo si la tabla está vacía
   // La semilla del menú solo se inserta si la tabla está vacía.
   const menuItems = new MenuItemsSQLite(db, [
     { id: 1, nombre: 'Pizza Margarita', precioBase: 8500, disponible: true },
