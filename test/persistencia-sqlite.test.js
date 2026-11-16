@@ -290,6 +290,31 @@ describe('Reinicio del servidor: los datos sobreviven (REF-09)', () => {
     }
   });
 
+  test('un pedido Listo y su mesa ocupada se conservan al reiniciar, hasta liberar la mesa', async () => {
+    const rutaDb = path.join(carpeta, 'listo.db');
+
+    const antes = crearApp({ rutaDb });
+    antes.pedidoService.confirmarPedido({ mesa: 'Mesa 6', items: [{ id: 3, cantidad: 2 }] });
+    antes.pedidoService.actualizarEstado({ mesa: 'Mesa 6', estado: 'Listo 🍽️' });
+    await apagar(antes);
+
+    const despues = crearApp({ rutaDb });
+    try {
+      expect(despues.mesas.obtener('Mesa 6')).toMatchObject({
+        estado: 'ocupada',
+        estadoPedido: 'Listo 🍽️'
+      });
+      expect(despues.pedidoService.obtenerResumen('Mesa 6').total).toBe(13000);
+
+      // Liberar la mesa cierra el pedido
+      expect(despues.mesaEstadoService.cerrarMesa('6').ok).toBe(true);
+      expect(despues.pedidos.obtener('Mesa 6')).toBeNull();
+      expect(despues.mesas.obtener('Mesa 6').estado).toBe('libre');
+    } finally {
+      await apagar(despues);
+    }
+  });
+
   test('por defecto crearApp usa una base en memoria nueva en cada llamada', async () => {
     const a = crearApp();
     a.mesaEstadoService.abrirMesa('1');

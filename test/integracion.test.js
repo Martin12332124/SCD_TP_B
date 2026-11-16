@@ -24,10 +24,11 @@ describe('Integración: flujo completo de pedido', () => {
     const r2 = servicio.actualizarEstado({ mesa: 'Mesa 5', estado: 'En Cocina 🍳' });
     expect(r2.ok).toBe(true);
 
+    // "Listo 🍽️" se conserva: el pedido sigue vigente y la mesa ocupada hasta liberarla.
     const r3 = servicio.actualizarEstado({ mesa: 'Mesa 5', estado: 'Listo 🍽️' });
     expect(r3.ok).toBe(true);
-    expect(mesas.obtener('Mesa 5').estado).toBe('libre');
-    expect(pedidos.obtener('Mesa 5')).toBeNull();
+    expect(mesas.obtener('Mesa 5').estado).toBe('ocupada');
+    expect(pedidos.obtener('Mesa 5').estado).toBe('Listo 🍽️');
 
     // Se emitieron 3 cambio_estado_pedido
     expect(notificador.eventosDe('cambio_estado_pedido')).toHaveLength(3);

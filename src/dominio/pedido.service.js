@@ -10,11 +10,18 @@ const CANTIDAD_MAXIMA = 99;
 
 const ESTADOS_VALIDOS = ['Recibido 📝', 'En Cocina 🍳', 'Listo 🍽️'];
 
+/**
+ * Estado final del ciclo: el pedido ya salió de cocina. Se conserva así, con la
+ * mesa ocupada, hasta que se libera la mesa (MesaEstadoService.cerrarMesa) o se
+ * pide una nueva ronda.
+ */
+const ESTADO_LISTO = 'Listo 🍽️';
+
 // Mapa de transiciones permitidas:
 // null (sin pedido)  → "Recibido 📝"
 // "Recibido 📝"      → "En Cocina 🍳"
 // "En Cocina 🍳"     → "Listo 🍽️"
-// "Listo 🍽️"        → "Recibido 📝" (nuevo ciclo)
+// "Listo 🍽️"        → "Recibido 📝" (nueva ronda sobre el mismo pedido)
 const TRANSICIONES = {
   null: 'Recibido 📝',
   'Recibido 📝': 'En Cocina 🍳',
@@ -50,7 +57,8 @@ class PedidoService {
    *
    * Postcondiciones:
    *   1. El pedido de esa mesa queda en el estado pedido;
-   *      si es Recibido, la mesa queda "ocupada".
+   *      si es Recibido, la mesa queda "ocupada". Con "Listo 🍽️" el pedido
+   *      se conserva (con sus ítems) y la mesa sigue ocupada.
    *   2. Todos los clientes reciben "cambio_estado_pedido" { mesa, estado }
    *      (y "estado_mesas" si se ocupó una mesa);
    *      quien llamó recibe { ok: true, mesa, estado }.
@@ -143,12 +151,8 @@ class PedidoService {
       mesaCambio = true;
     }
 
-    // Si el estado es "Listo 🍽️", se elimina el pedido vigente y se libera la mesa
-    if (estado === 'Listo 🍽️') {
-      this.pedidos.eliminar(mesa);
-      this.mesas.liberar(mesa);
-      mesaCambio = true;
-    }
+    // "Listo 🍽️" no elimina el pedido ni libera la mesa: los clientes siguen sentados.
+    // El pedido se cierra al liberar la mesa (MesaEstadoService.cerrarMesa).
 
     // ── Invariante (aserción interna) ───────────────────────────────
     verificarConsistenciaMesasPedidos(this.pedidos, this.mesas);
@@ -349,6 +353,7 @@ class PedidoService {
 module.exports = {
   PedidoService,
   ESTADOS_VALIDOS,
+  ESTADO_LISTO,
   TRANSICIONES,
   CANTIDAD_MINIMA,
   CANTIDAD_MAXIMA

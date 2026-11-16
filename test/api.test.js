@@ -115,6 +115,40 @@ describe('API de mesas: estado del pedido en la lista', () => {
   });
 });
 
+describe('API de mesas: pedido "Listo 🍽️" y liberar la mesa', () => {
+  test('con el pedido Listo, la mesa sigue ocupada y la lista lo refleja', async () => {
+    ctx.pedidoService.confirmarPedido({ mesa: 'Mesa 2', items: [{ id: 1, cantidad: 1 }] });
+    ctx.pedidoService.actualizarEstado({ mesa: 'Mesa 2', estado: 'Listo 🍽️' });
+
+    const mesa = (await llamar('GET', '/api/mesas/2')).json.mesa;
+    expect(mesa).toMatchObject({ estado: 'ocupada', estadoPedido: 'Listo 🍽️' });
+
+    const resumen = (await llamar('GET', '/api/mesas/2/pedido')).json;
+    expect(resumen.estado).toBe('Listo 🍽️');
+    expect(resumen.total).toBe(8500);
+  });
+
+  test('POST /cerrar con el pedido Listo responde 200, cierra el pedido y libera la mesa', async () => {
+    ctx.pedidoService.confirmarPedido({ mesa: 'Mesa 2', items: [{ id: 1, cantidad: 1 }] });
+    ctx.pedidoService.actualizarEstado({ mesa: 'Mesa 2', estado: 'Listo 🍽️' });
+
+    const r = await llamar('POST', '/api/mesas/2/cerrar');
+    expect(r.status).toBe(200);
+    expect(r.json).toEqual({ ok: true, mesa: 'Mesa 2', estado: 'libre' });
+
+    const mesa = (await llamar('GET', '/api/mesas/2')).json.mesa;
+    expect(mesa).toMatchObject({ estado: 'libre', estadoPedido: null });
+    expect((await llamar('GET', '/api/mesas/2/pedido')).json.items).toEqual([]);
+  });
+
+  test('POST /cerrar con el pedido En Cocina sigue respondiendo 409 (PEDIDO_ACTIVO)', async () => {
+    ctx.pedidoService.confirmarPedido({ mesa: 'Mesa 2', items: [{ id: 1, cantidad: 1 }] });
+    const r = await llamar('POST', '/api/mesas/2/cerrar');
+    expect(r.status).toBe(409);
+    expect(r.json.tipo).toBe('PEDIDO_ACTIVO');
+  });
+});
+
 describe('API de configuración de mesas (agregar y quitar)', () => {
   test('POST /api/mesas sin cuerpo agrega la mesa siguiente y responde 201', async () => {
     const r = await llamar('POST', '/api/mesas');
