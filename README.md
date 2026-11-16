@@ -119,6 +119,13 @@ guarda nada (REF-09).
 Detalles (esquema, decisiones, cómo abrir la base con DB Browser for SQLite):
 [docs/persistencia-sqlite.md](docs/persistencia-sqlite.md).
 
+### Administración de mesas
+
+La cantidad de mesas ya no es fija: se agregan con `POST /api/mesas` y se quitan con
+`DELETE /api/mesas/:numero` (solo mesas libres y sin pedido, y nunca la última). Las 10 mesas
+iniciales se crean únicamente la primera vez. Además, un pedido marcado "Listo 🍽️" se conserva
+con la mesa ocupada hasta liberarla. Detalles: [docs/administracion-mesas.md](docs/administracion-mesas.md).
+
 ---
 
 ## REQUISITOS PREVIOS (Hacer esto antes de tocar el proyecto)
