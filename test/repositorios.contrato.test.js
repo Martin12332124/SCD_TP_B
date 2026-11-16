@@ -1,0 +1,259 @@
+// test/repositorios.contrato.test.js
+// Pruebas de "contrato": los mismos tests corren contra los repositorios en memoria
+// y contra los de SQLite, para comprobar que ambos se comportan igual ante el dominio.
+// Al final hay tests solo para SQLite (copias defensivas, emojis, tipos).
+
+const {
+  PedidosEnMemoria,
+  MesasEnMemoria,
+  MenuItemsEnMemoria
+} = require('../src/infraestructura/repositorios');
+const {
+  PedidosSQLite,
+  MesasSQLite,
+  MenuItemsSQLite
+} = require('../src/infraestructura/sqlite/repositorios-sqlite');
+const { abrirBaseDeDatos } = require('../src/infraestructura/sqlite/conexion');
+const { ESTADOS_VALIDOS } = require('../src/dominio/pedido.service');
+
+const SEMILLA = [
+  { id: 1, nombre: 'Pizza Margarita', precioBase: 8500, disponible: true },
+  { id: 2, nombre: 'Coca-Cola 500 ml', precioBase: 2000, disponible: true },
+  { id: 3, nombre: 'Ensalada César', precioBase: 6500, disponible: true }
+];
+
+const ITEMS = [
+  { id: 2, nombre: 'Coca-Cola 500 ml', precioBase: 2000, cantidad: 3 },
+  { id: 1, nombre: 'Pizza Margarita', precioBase: 8500, cantidad: 1 }
+];
+
+let db;
+
+const implementaciones = {
+  memoria: () => ({
+    pedidos: new PedidosEnMemoria(),
+    mesas: new MesasEnMemoria(10),
+    menuItems: new MenuItemsEnMemoria(SEMILLA)
+  }),
+  sqlite: () => {
+    db = abrirBaseDeDatos(':memory:');
+    return {
+      pedidos: new PedidosSQLite(db),
+      mesas: new MesasSQLite(db, 10),
+      menuItems: new MenuItemsSQLite(db, SEMILLA)
+    };
+  }
+};
+
+afterEach(() => {
+  if (db && db.open) db.close();
+  db = null;
+});
+
+describe.each(Object.keys(implementaciones))('Contrato de repositorios (%s)', (nombre) => {
+  let repos;
+  beforeEach(() => {
+    repos = implementaciones[nombre]();
+  });
+
+  describe('pedidos', () => {
+    test('obtener devuelve null si la mesa no tiene pedido', () => {
+      expect(repos.pedidos.obtener('Mesa 1')).toBeNull();
+    });
+
+    test('guardar y obtener un pedido sin ítems', () => {
+      repos.pedidos.guardar('Mesa 1', { mesa: 'Mesa 1', estado: 'Recibido 📝' });
+      expect(repos.pedidos.obtener('Mesa 1')).toEqual({ mesa: 'Mesa 1', estado: 'Recibido 📝' });
+    });
+
+    test('guardar y obtener un pedido con ítems, en el mismo orden', () => {
+      repos.pedidos.guardar('Mesa 2', { mesa: 'Mesa 2', estado: 'En Cocina 🍳', items: ITEMS });
+      expect(repos.pedidos.obtener('Mesa 2')).toEqual({
+        mesa: 'Mesa 2',
+        estado: 'En Cocina 🍳',
+        items: ITEMS
+      });
+    });
+
+    test('guardar de nuevo reemplaza estado e ítems', () => {
+      repos.pedidos.guardar('Mesa 2', { mesa: 'Mesa 2', estado: 'Recibido 📝', items: ITEMS });
+      repos.pedidos.guardar('Mesa 2', {
+        mesa: 'Mesa 2',
+        estado: 'En Cocina 🍳',
+        items: [ITEMS[0]]
+      });
+      expect(repos.pedidos.obtener('Mesa 2')).toEqual({
+        mesa: 'Mesa 2',
+        estado: 'En Cocina 🍳',
+        items: [ITEMS[0]]
+      });
+    });
+
+    test('eliminar quita el pedido', () => {
+      repos.pedidos.guardar('Mesa 3', { mesa: 'Mesa 3', estado: 'Recibido 📝', items: ITEMS });
+      repos.pedidos.eliminar('Mesa 3');
+      expect(repos.pedidos.obtener('Mesa 3')).toBeNull();
+    });
+
+    test('todos devuelve los pedidos indexados por mesa', () => {
+      repos.pedidos.guardar('Mesa 1', { mesa: 'Mesa 1', estado: 'Recibido 📝' });
+      repos.pedidos.guardar('Mesa 4', { mesa: 'Mesa 4', estado: 'En Cocina 🍳', items: ITEMS });
+      expect(repos.pedidos.todos()).toEqual({
+        'Mesa 1': { mesa: 'Mesa 1', estado: 'Recibido 📝' },
+        'Mesa 4': { mesa: 'Mesa 4', estado: 'En Cocina 🍳', items: ITEMS }
+      });
+    });
+
+    test('todos devuelve un objeto nuevo: agregarle claves no crea pedidos', () => {
+      const copia = repos.pedidos.todos();
+      copia['Mesa 9'] = { mesa: 'Mesa 9', estado: 'Recibido 📝' };
+      expect(repos.pedidos.obtener('Mesa 9')).toBeNull();
+    });
+  });
+
+  describe('mesas', () => {
+    test('se crean 10 mesas libres, ordenadas por número', () => {
+      const mesas = repos.mesas.listar();
+      expect(mesas).toHaveLength(10);
+      expect(mesas[0]).toEqual({ id: 'Mesa 1', numero: 1, estado: 'libre' });
+      expect(mesas[9]).toEqual({ id: 'Mesa 10', numero: 10, estado: 'libre' });
+      expect(mesas.every((m) => m.estado === 'libre')).toBe(true);
+    });
+
+    test('obtener devuelve null para una mesa que no existe', () => {
+      expect(repos.mesas.obtener('Mesa 11')).toBeNull();
+    });
+
+    test('ocupar y liberar cambian el estado', () => {
+      repos.mesas.ocupar('Mesa 5');
+      expect(repos.mesas.obtener('Mesa 5').estado).toBe('ocupada');
+      repos.mesas.liberar('Mesa 5');
+      expect(repos.mesas.obtener('Mesa 5').estado).toBe('libre');
+    });
+
+    test('ocupar una mesa inexistente no hace nada ni lanza error', () => {
+      expect(() => repos.mesas.ocupar('Mesa 99')).not.toThrow();
+      expect(repos.mesas.listar()).toHaveLength(10);
+    });
+
+    test('listar devuelve copias: modificarlas no cambia el repositorio', () => {
+      repos.mesas.listar()[0].estado = 'ocupada';
+      expect(repos.mesas.obtener('Mesa 1').estado).toBe('libre');
+    });
+  });
+
+  describe('ítems del menú', () => {
+    test('la semilla queda cargada', () => {
+      expect(repos.menuItems.listar()).toEqual(SEMILLA);
+    });
+
+    test('obtener por id devuelve el ítem, o null si no existe', () => {
+      expect(repos.menuItems.obtener(3)).toEqual(SEMILLA[2]);
+      expect(repos.menuItems.obtener(99)).toBeNull();
+    });
+
+    test('obtener con el id como string no encuentra el ítem', () => {
+      expect(repos.menuItems.obtener('1')).toBeNull();
+    });
+
+    test('guardar sin id asigna el siguiente y lo escribe en el objeto recibido', () => {
+      const nuevo = { nombre: 'Jugo', precioBase: 1500, disponible: true };
+      const guardado = repos.menuItems.guardar(nuevo);
+      expect(guardado).toEqual({ id: 4, nombre: 'Jugo', precioBase: 1500, disponible: true });
+      expect(nuevo.id).toBe(4);
+      expect(repos.menuItems.obtener(4)).toEqual(guardado);
+    });
+
+    test('guardar con id existente actualiza el ítem', () => {
+      repos.menuItems.guardar({
+        id: 1,
+        nombre: 'Pizza Napolitana',
+        precioBase: 9000,
+        disponible: false
+      });
+      expect(repos.menuItems.obtener(1)).toEqual({
+        id: 1,
+        nombre: 'Pizza Napolitana',
+        precioBase: 9000,
+        disponible: false
+      });
+      expect(repos.menuItems.listar()).toHaveLength(3);
+    });
+
+    test('buscarPorNombre ignora mayúsculas, acentos en mayúscula y espacios extremos', () => {
+      expect(repos.menuItems.buscarPorNombre('  ENSALADA CÉSAR ')).toEqual(SEMILLA[2]);
+      expect(repos.menuItems.buscarPorNombre('pizza margarita').id).toBe(1);
+      expect(repos.menuItems.buscarPorNombre('Hamburguesa')).toBeNull();
+    });
+
+    test('obtener devuelve una copia: modificarla no cambia el repositorio', () => {
+      repos.menuItems.obtener(1).precioBase = 1;
+      expect(repos.menuItems.obtener(1).precioBase).toBe(8500);
+    });
+  });
+});
+
+describe('Repositorios SQLite: detalles propios', () => {
+  let pedidos, mesas;
+  beforeEach(() => {
+    db = abrirBaseDeDatos(':memory:');
+    mesas = new MesasSQLite(db, 10);
+    pedidos = new PedidosSQLite(db);
+  });
+
+  test.each(ESTADOS_VALIDOS)('el estado "%s" se guarda y se lee exactamente igual', (estado) => {
+    pedidos.guardar('Mesa 1', { mesa: 'Mesa 1', estado });
+    expect(pedidos.obtener('Mesa 1').estado).toBe(estado);
+    expect(Buffer.from(pedidos.obtener('Mesa 1').estado)).toEqual(Buffer.from(estado));
+  });
+
+  test('un pedido sin ítems se lee sin la propiedad items (no null)', () => {
+    pedidos.guardar('Mesa 1', { mesa: 'Mesa 1', estado: 'Recibido 📝' });
+    expect(pedidos.obtener('Mesa 1')).not.toHaveProperty('items');
+  });
+
+  test('obtener devuelve copias de pedidos y mesas', () => {
+    pedidos.guardar('Mesa 1', { mesa: 'Mesa 1', estado: 'Recibido 📝', items: ITEMS });
+    const leido = pedidos.obtener('Mesa 1');
+    leido.estado = 'otro';
+    leido.items[0].cantidad = 50;
+    expect(pedidos.obtener('Mesa 1')).toEqual({
+      mesa: 'Mesa 1',
+      estado: 'Recibido 📝',
+      items: ITEMS
+    });
+
+    mesas.obtener('Mesa 2').estado = 'ocupada';
+    expect(mesas.obtener('Mesa 2').estado).toBe('libre');
+  });
+
+  test('eliminar un pedido borra también sus ítems (ON DELETE CASCADE)', () => {
+    pedidos.guardar('Mesa 1', { mesa: 'Mesa 1', estado: 'Recibido 📝', items: ITEMS });
+    pedidos.eliminar('Mesa 1');
+    expect(db.prepare('SELECT COUNT(*) AS n FROM pedido_items').get().n).toBe(0);
+  });
+
+  test('un pedido sobre una mesa inexistente se rechaza (clave foránea)', () => {
+    expect(() => pedidos.guardar('Mesa 99', { mesa: 'Mesa 99', estado: 'Recibido 📝' })).toThrow();
+  });
+
+  test('si falla un ítem, guardar no deja el pedido a medias', () => {
+    pedidos.guardar('Mesa 1', { mesa: 'Mesa 1', estado: 'Recibido 📝', items: [ITEMS[0]] });
+    const roto = { id: 5, nombre: null, precioBase: 100, cantidad: 1 }; // nombre NOT NULL
+    expect(() =>
+      pedidos.guardar('Mesa 1', { mesa: 'Mesa 1', estado: 'En Cocina 🍳', items: [ITEMS[1], roto] })
+    ).toThrow();
+    expect(pedidos.obtener('Mesa 1')).toEqual({
+      mesa: 'Mesa 1',
+      estado: 'Recibido 📝',
+      items: [ITEMS[0]]
+    });
+  });
+
+  test('disponible se devuelve como boolean', () => {
+    const menu = new MenuItemsSQLite(db, SEMILLA);
+    menu.guardar({ id: 2, nombre: 'Coca-Cola 500 ml', precioBase: 2000, disponible: false });
+    expect(menu.obtener(2).disponible).toBe(false);
+    expect(menu.obtener(1).disponible).toBe(true);
+  });
+});
