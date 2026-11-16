@@ -9,6 +9,7 @@ const { Server } = require('socket.io');
 const { PedidoService } = require('./dominio/pedido.service');
 const { MesaService } = require('./dominio/mesa.service');
 const { MesaEstadoService } = require('./dominio/mesa-estado.service');
+const { MesaConfiguracionService } = require('./dominio/mesa-configuracion.service');
 const { MenuItemService } = require('./dominio/menu-item.service');
 const { abrirBaseDeDatos } = require('./infraestructura/sqlite/conexion');
 const {
@@ -70,20 +71,25 @@ function crearApp({ rutaDb = ':memory:' } = {}) {
   const pedidoService = new PedidoService({ pedidos, mesas, notificador, menuItems });
   const mesaService = new MesaService({ pedidos, mesas, notificador });
   const mesaEstadoService = new MesaEstadoService({ pedidos, mesas, notificador });
+  const mesaConfiguracionService = new MesaConfiguracionService({ pedidos, mesas, notificador });
   const menuItemService = new MenuItemService({ menuItems, notificador });
 
   // Cada caso de uso que escribe corre en una transacción: se guarda completo o nada.
   envolverEnTransaccion(db, notificador, pedidoService, ['actualizarEstado', 'confirmarPedido']);
   envolverEnTransaccion(db, notificador, mesaService, ['trasladarPedido']);
   envolverEnTransaccion(db, notificador, mesaEstadoService, ['abrirMesa', 'cerrarMesa']);
+  envolverEnTransaccion(db, notificador, mesaConfiguracionService, ['agregarMesa', 'quitarMesa']);
   envolverEnTransaccion(db, notificador, menuItemService, [
     'crearItem',
     'editarItem',
     'cambiarDisponibilidad'
   ]);
 
-  // ── API REST (US-08, US-09): gestión de estado de mesas ──────────────
-  app.use('/api/mesas', crearMesasRouter({ mesaEstadoService, mesas, pedidoService }));
+  // ── API REST (US-08, US-09): estado de mesas, y agregar o quitar mesas ──
+  app.use(
+    '/api/mesas',
+    crearMesasRouter({ mesaEstadoService, mesas, pedidoService, mesaConfiguracionService })
+  );
 
   // ── API REST (US-07): gestión de ítems del menú ───────────────────
   app.use('/api/menu-items', crearMenuItemsRouter({ menuItemService }));
@@ -126,6 +132,7 @@ function crearApp({ rutaDb = ':memory:' } = {}) {
     pedidoService,
     mesaService,
     mesaEstadoService,
+    mesaConfiguracionService,
     menuItemService,
     pedidos,
     mesas,

@@ -272,6 +272,24 @@ describe('Reinicio del servidor: los datos sobreviven (REF-09)', () => {
     }
   });
 
+  test('las mesas agregadas y quitadas se conservan al reiniciar', async () => {
+    const rutaDb = path.join(carpeta, 'mesas.db');
+
+    const antes = crearApp({ rutaDb });
+    expect(antes.mesaConfiguracionService.quitarMesa(9).ok).toBe(true);
+    expect(antes.mesaConfiguracionService.agregarMesa({ numero: 25 }).ok).toBe(true);
+    await apagar(antes);
+
+    const despues = crearApp({ rutaDb });
+    try {
+      // La mesa 9 no se vuelve a crear y la 25 sigue existiendo.
+      const numeros = despues.mesas.listar().map((m) => m.numero);
+      expect(numeros).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 10, 25]);
+    } finally {
+      await apagar(despues);
+    }
+  });
+
   test('por defecto crearApp usa una base en memoria nueva en cada llamada', async () => {
     const a = crearApp();
     a.mesaEstadoService.abrirMesa('1');

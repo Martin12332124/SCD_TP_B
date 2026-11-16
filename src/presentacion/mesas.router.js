@@ -1,13 +1,16 @@
 // src/presentacion/mesas.router.js
-// Router Express para la API REST de gestión de estado de mesas (US-08, US-09).
+// Router Express para la API REST de gestión de mesas (US-08, US-09)
+// y de su configuración (agregar y quitar mesas).
 //
 // Rutas expuestas:
-//   GET  /api/mesas                 → lista todas las mesas con su estado (US-08)
-//   GET  /api/mesas/:numero         → detalle de una mesa específica (US-08 CA5)
-//   POST /api/mesas/:numero/abrir   → abre (ocupa) la mesa indicada (US-09)
-//   POST /api/mesas/:numero/cerrar  → cierra (libera) la mesa indicada (US-09)
+//   GET    /api/mesas                 → lista todas las mesas con su estado (US-08)
+//   POST   /api/mesas                 → agrega una mesa
+//   GET    /api/mesas/:numero         → detalle de una mesa específica (US-08 CA5)
+//   DELETE /api/mesas/:numero         → quita una mesa libre y sin pedido
+//   POST   /api/mesas/:numero/abrir   → abre (ocupa) la mesa indicada (US-09)
+//   POST   /api/mesas/:numero/cerrar  → cierra (libera) la mesa indicada (US-09)
 //
-// Cada ruta delega la lógica al MesaEstadoService y traduce su resultado
+// Cada ruta delega la lógica a su servicio de dominio y traduce el resultado
 // a la respuesta HTTP correspondiente (código de estado + cuerpo JSON).
 
 const { Router } = require('express');
@@ -15,10 +18,20 @@ const { Router } = require('express');
 /**
  * Crea y devuelve el router de mesas con el servicio inyectado.
  *
- * @param {{ mesaEstadoService: import('../dominio/mesa-estado.service').MesaEstadoService }} deps
+ * @param {object} deps
+ * @param {import('../dominio/mesa-estado.service').MesaEstadoService} deps.mesaEstadoService
+ * @param {object} deps.mesas - repositorio de mesas (obtener, listar)
+ * @param {object} [deps.pedidoService] - para el resumen del pedido de una mesa
+ * @param {object} [deps.mesaConfiguracionService] - agregarMesa(datos), quitarMesa(numero);
+ *   si no se inyecta, las rutas para agregar y quitar mesas no se exponen
  * @returns {Router}
  */
-function crearMesasRouter({ mesaEstadoService, mesas, pedidoService = null }) {
+function crearMesasRouter({
+  mesaEstadoService,
+  mesas,
+  pedidoService = null,
+  mesaConfiguracionService = null
+}) {
   const router = Router();
 
   // ── Tabla de mapeo: tipo de error → código HTTP ──────────────────────────
@@ -26,7 +39,9 @@ function crearMesasRouter({ mesaEstadoService, mesas, pedidoService = null }) {
     ENTRADA_INVALIDA: 400,
     NO_ENCONTRADO: 404,
     ESTADO_NO_PERMITIDO: 409,
-    PEDIDO_ACTIVO: 409
+    PEDIDO_ACTIVO: 409,
+    DUPLICADO: 409,
+    LIMITE_ALCANZADO: 409
   };
 
   /**
@@ -145,6 +160,56 @@ function crearMesasRouter({ mesaEstadoService, mesas, pedidoService = null }) {
     const status = HTTP_STATUS[resultado.tipo] ?? 500;
     return res.status(status).json(resultado);
   });
+
+  if (mesaConfiguracionService) {
+    /**
+     * POST /api/mesas
+     *
+     * Agrega una mesa libre. Cuerpo JSON opcional: { "numero": 12 }.
+     * Sin "numero" se crea la siguiente a la más alta que exista.
+     *
+     * Respuestas:
+     *   201 Created      { ok: true,  mesa: { id: "Mesa 12", numero: 12, estado: "libre" } }
+     *   400 Bad Request  { ok: false, tipo: "ENTRADA_INVALIDA", error: "..." }
+     *   409 Conflict     { ok: false, tipo: "DUPLICADO" | "LIMITE_ALCANZADO", error: "..." }
+     *
+     * Evento: 'estado_mesas' con la lista actualizada, a todos los clientes.
+     */
+    router.post('/', (req, res) => {
+      const resultado = mesaConfiguracionService.agregarMesa(req.body);
+
+      if (resultado.ok) {
+        return res.status(201).json(resultado);
+      }
+
+      const status = HTTP_STATUS[resultado.tipo] ?? 500;
+      return res.status(status).json(resultado);
+    });
+
+    /**
+     * DELETE /api/mesas/:numero
+     *
+     * Quita una mesa. Solo si está libre, sin pedido vigente y no es la última.
+     *
+     * Respuestas:
+     *   200 OK           { ok: true,  mesa: "Mesa 12" }
+     *   400 Bad Request  { ok: false, tipo: "ENTRADA_INVALIDA", error: "..." }
+     *   404 Not Found    { ok: false, tipo: "NO_ENCONTRADO",    error: "..." }
+     *   409 Conflict     { ok: false, tipo: "ESTADO_NO_PERMITIDO" | "PEDIDO_ACTIVO", error: "..." }
+     *
+     * Evento: 'estado_mesas' con la lista actualizada, a todos los clientes.
+     */
+    router.delete('/:numero', (req, res) => {
+      const resultado = mesaConfiguracionService.quitarMesa(req.params.numero);
+
+      if (resultado.ok) {
+        return res.status(200).json(resultado);
+      }
+
+      const status = HTTP_STATUS[resultado.tipo] ?? 500;
+      return res.status(status).json(resultado);
+    });
+  }
 
   return router;
 }

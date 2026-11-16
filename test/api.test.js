@@ -86,6 +86,96 @@ describe('API de mesas (US-08 y US-09)', () => {
   });
 });
 
+describe('API de configuración de mesas (agregar y quitar)', () => {
+  test('POST /api/mesas sin cuerpo agrega la mesa siguiente y responde 201', async () => {
+    const r = await llamar('POST', '/api/mesas');
+    expect(r.status).toBe(201);
+    expect(r.json).toMatchObject({
+      ok: true,
+      mesa: { id: 'Mesa 11', numero: 11, estado: 'libre' }
+    });
+    expect((await llamar('GET', '/api/mesas')).json.mesas).toHaveLength(11);
+  });
+
+  test('POST /api/mesas con número agrega esa mesa y la lista queda ordenada', async () => {
+    const r = await llamar('POST', '/api/mesas', { numero: 20 });
+    expect(r.status).toBe(201);
+    expect(r.json.mesa).toMatchObject({ id: 'Mesa 20', numero: 20 });
+    const { mesas } = (await llamar('GET', '/api/mesas')).json;
+    expect(mesas.map((m) => m.numero)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20]);
+  });
+
+  test('POST rechaza un número inválido (400) y uno repetido (409)', async () => {
+    const invalido = await llamar('POST', '/api/mesas', { numero: 'abc' });
+    expect(invalido.status).toBe(400);
+    expect(invalido.json.tipo).toBe('ENTRADA_INVALIDA');
+
+    const fueraDeRango = await llamar('POST', '/api/mesas', { numero: 100 });
+    expect(fueraDeRango.status).toBe(400);
+
+    const repetido = await llamar('POST', '/api/mesas', { numero: 3 });
+    expect(repetido.status).toBe(409);
+    expect(repetido.json).toEqual({ ok: false, tipo: 'DUPLICADO', error: 'La mesa 3 ya existe.' });
+    expect((await llamar('GET', '/api/mesas')).json.mesas).toHaveLength(10);
+  });
+
+  test('POST sin número con la mesa 99 ya creada responde 409 (LIMITE_ALCANZADO)', async () => {
+    await llamar('POST', '/api/mesas', { numero: 99 });
+    const r = await llamar('POST', '/api/mesas');
+    expect(r.status).toBe(409);
+    expect(r.json.tipo).toBe('LIMITE_ALCANZADO');
+  });
+
+  test('una mesa agregada funciona como cualquier otra (se puede abrir)', async () => {
+    await llamar('POST', '/api/mesas');
+    const r = await llamar('POST', '/api/mesas/11/abrir');
+    expect(r.status).toBe(200);
+    expect(r.json).toEqual({ ok: true, mesa: 'Mesa 11', estado: 'ocupada' });
+  });
+
+  test('DELETE /api/mesas/:numero quita una mesa libre y responde 200', async () => {
+    const r = await llamar('DELETE', '/api/mesas/10');
+    expect(r.status).toBe(200);
+    expect(r.json).toEqual({ ok: true, mesa: 'Mesa 10' });
+    expect((await llamar('GET', '/api/mesas/10')).status).toBe(404);
+    expect((await llamar('GET', '/api/mesas')).json.mesas).toHaveLength(9);
+  });
+
+  test('DELETE responde 400 si el número es inválido y 404 si la mesa no existe', async () => {
+    expect((await llamar('DELETE', '/api/mesas/abc')).status).toBe(400);
+    expect((await llamar('DELETE', '/api/mesas/0')).status).toBe(400);
+    expect((await llamar('DELETE', '/api/mesas/11')).status).toBe(404);
+  });
+
+  test('DELETE de una mesa ocupada responde 409 y la mesa sigue existiendo', async () => {
+    await llamar('POST', '/api/mesas/4/abrir');
+    const r = await llamar('DELETE', '/api/mesas/4');
+    expect(r.status).toBe(409);
+    expect(r.json.tipo).toBe('ESTADO_NO_PERMITIDO');
+    expect(r.json.error).toMatch(/está ocupada/);
+    expect(ctx.mesas.obtener('Mesa 4')).not.toBeNull();
+  });
+
+  test('DELETE de una mesa con pedido vigente responde 409 (PEDIDO_ACTIVO)', async () => {
+    // Caso defensivo: pedido guardado sobre una mesa que figura libre
+    ctx.pedidos.guardar('Mesa 6', { mesa: 'Mesa 6', estado: 'En Cocina 🍳' });
+    const r = await llamar('DELETE', '/api/mesas/6');
+    expect(r.status).toBe(409);
+    expect(r.json.tipo).toBe('PEDIDO_ACTIVO');
+    expect(ctx.mesas.obtener('Mesa 6')).not.toBeNull();
+  });
+
+  test('si falla a mitad, agregar una mesa no deja nada guardado (transacción)', async () => {
+    // La mesa se inserta y luego falla la lectura para el evento: debe deshacerse.
+    jest.spyOn(ctx.mesas, 'listar').mockImplementationOnce(() => {
+      throw new Error('fallo de lectura');
+    });
+    const r = await llamar('POST', '/api/mesas', { numero: 30 });
+    expect(r.status).toBe(500);
+    expect(ctx.mesas.obtener('Mesa 30')).toBeNull();
+  });
+});
+
 describe('API del menú (US-07)', () => {
   test('GET /api/menu-items lista los ítems iniciales', async () => {
     const r = await llamar('GET', '/api/menu-items');
