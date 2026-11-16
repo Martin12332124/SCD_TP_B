@@ -222,3 +222,66 @@ describe('Atomicidad de los casos de uso sobre SQLite (REF-09)', () => {
     expect(espia.eventos).toEqual([]);
   });
 });
+
+describe('Reinicio del servidor: los datos sobreviven (REF-09)', () => {
+  const { crearApp } = require('../src/app');
+
+  /** Simula apagar el servidor: cierra Socket.io y la conexión a la base. */
+  async function apagar(ctx) {
+    await ctx.io.close();
+    ctx.db.close();
+  }
+
+  test('mesas, menú y pedidos se conservan al cerrar y reabrir el mismo archivo', async () => {
+    const rutaDb = path.join(carpeta, 'restaurante.db');
+
+    const antes = crearApp({ rutaDb });
+    antes.pedidoService.confirmarPedido({
+      mesa: 'Mesa 3',
+      items: [
+        { id: 1, cantidad: 2 },
+        { id: 2, cantidad: 1 }
+      ]
+    });
+    antes.mesaEstadoService.abrirMesa('4');
+    antes.menuItemService.editarItem('1', { precioBase: 9000 });
+    antes.menuItemService.crearItem({ nombre: 'Jugo natural', precioBase: 2500 });
+    const resumenAntes = antes.pedidoService.obtenerResumen('Mesa 3');
+    await apagar(antes);
+
+    const despues = crearApp({ rutaDb });
+    try {
+      // El pedido sigue igual: mismos ítems, precios del momento en que se confirmó.
+      expect(despues.pedidoService.obtenerResumen('Mesa 3')).toEqual(resumenAntes);
+      expect(resumenAntes.estado).toBe('En Cocina 🍳');
+      expect(resumenAntes.total).toBe(8500 * 2 + 2000);
+
+      // Las mesas conservan su estado (no se reinician a "libre").
+      const mesas = despues.mesas.listar();
+      expect(mesas).toHaveLength(10);
+      expect(despues.mesas.obtener('Mesa 3').estado).toBe('ocupada');
+      expect(despues.mesas.obtener('Mesa 4').estado).toBe('ocupada');
+
+      // El menú conserva las ediciones y la semilla no se duplica.
+      const menu = despues.menuItemService.listarItems().items;
+      expect(menu).toHaveLength(4);
+      expect(menu.find((i) => i.id === 1).precioBase).toBe(9000);
+      expect(menu.find((i) => i.id === 4).nombre).toBe('Jugo natural');
+    } finally {
+      await apagar(despues);
+    }
+  });
+
+  test('por defecto crearApp usa una base en memoria nueva en cada llamada', async () => {
+    const a = crearApp();
+    a.mesaEstadoService.abrirMesa('1');
+    const b = crearApp();
+    try {
+      expect(b.mesas.obtener('Mesa 1').estado).toBe('libre');
+      expect(a.db.memory).toBe(true);
+    } finally {
+      await apagar(a);
+      await apagar(b);
+    }
+  });
+});

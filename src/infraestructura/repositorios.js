@@ -1,6 +1,7 @@
 // src/infraestructura/repositorios.js
-// Repositorios en memoria para pedidos y mesas.
-// Implementación de producción usada por el servidor real.
+// Repositorios en memoria para pedidos, mesas e ítems del menú.
+// Se usan en los tests unitarios y en scripts/evidencia.js; el servidor real usa
+// los repositorios SQLite (sqlite/repositorios-sqlite.js), que cumplen el mismo contrato.
 
 /**
  * Repositorio de pedidos en memoria.

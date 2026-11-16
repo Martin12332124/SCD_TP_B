@@ -1,6 +1,6 @@
 // src/app.js
 // Configuración de la aplicación Express + Socket.io
-// Usa PedidoService con dependencias explícitas.
+// Usa PedidoService con dependencias explícitas y persistencia en SQLite.
 
 const express = require('express');
 const http = require('http');
@@ -10,13 +10,28 @@ const { PedidoService } = require('./dominio/pedido.service');
 const { MesaService } = require('./dominio/mesa.service');
 const { MesaEstadoService } = require('./dominio/mesa-estado.service');
 const { MenuItemService } = require('./dominio/menu-item.service');
-const { PedidosEnMemoria, MesasEnMemoria, MenuItemsEnMemoria } = require('./infraestructura/repositorios');
+const { abrirBaseDeDatos } = require('./infraestructura/sqlite/conexion');
+const {
+  PedidosSQLite,
+  MesasSQLite,
+  MenuItemsSQLite
+} = require('./infraestructura/sqlite/repositorios-sqlite');
+const {
+  NotificadorTransaccional,
+  envolverEnTransaccion
+} = require('./infraestructura/sqlite/transacciones');
 const { SocketNotificador } = require('./infraestructura/notificador');
 const { crearMesasRouter } = require('./presentacion/mesas.router');
 const { crearMenuItemsRouter } = require('./presentacion/menu-items.router');
 const { registrarHandlersSocket } = require('./presentacion/socket.handlers');
 
-function crearApp() {
+/**
+ * Crea la aplicación con sus dependencias.
+ * @param {object} [opciones]
+ * @param {string} [opciones.rutaDb=':memory:'] - Archivo SQLite. Por defecto una base en
+ *   memoria, nueva en cada llamada (así los tests parten limpios); index.js pasa la ruta real.
+ */
+function crearApp({ rutaDb = ':memory:' } = {}) {
   const app = express();
   const server = http.createServer(app);
 
@@ -39,19 +54,33 @@ function crearApp() {
   app.use(express.json());
 
   // ── Instancias de producción (inyección de dependencias) ──────────
-  const pedidos = new PedidosEnMemoria();
-  const mesas = new MesasEnMemoria(10);
-  const menuItems = new MenuItemsEnMemoria([
+  // Los tres repositorios comparten la misma conexión para que una transacción los abarque.
+  const db = abrirBaseDeDatos(rutaDb);
+  const pedidos = new PedidosSQLite(db);
+  const mesas = new MesasSQLite(db, 10); // crea las mesas que falten, sin tocar las existentes
+  // La semilla del menú solo se inserta si la tabla está vacía.
+  const menuItems = new MenuItemsSQLite(db, [
     { id: 1, nombre: 'Pizza Margarita', precioBase: 8500, disponible: true },
     { id: 2, nombre: 'Coca-Cola 500 ml', precioBase: 2000, disponible: true },
     { id: 3, nombre: 'Ensalada César', precioBase: 6500, disponible: true }
   ]);
-  const notificador = new SocketNotificador(io);
+  // Retiene los eventos hasta que la transacción del caso de uso se confirma (REF-09).
+  const notificador = new NotificadorTransaccional(new SocketNotificador(io));
 
   const pedidoService = new PedidoService({ pedidos, mesas, notificador, menuItems });
   const mesaService = new MesaService({ pedidos, mesas, notificador });
   const mesaEstadoService = new MesaEstadoService({ pedidos, mesas, notificador });
   const menuItemService = new MenuItemService({ menuItems, notificador });
+
+  // Cada caso de uso que escribe corre en una transacción: se guarda completo o nada.
+  envolverEnTransaccion(db, notificador, pedidoService, ['actualizarEstado', 'confirmarPedido']);
+  envolverEnTransaccion(db, notificador, mesaService, ['trasladarPedido']);
+  envolverEnTransaccion(db, notificador, mesaEstadoService, ['abrirMesa', 'cerrarMesa']);
+  envolverEnTransaccion(db, notificador, menuItemService, [
+    'crearItem',
+    'editarItem',
+    'cambiarDisponibilidad'
+  ]);
 
   // ── API REST (US-08, US-09): gestión de estado de mesas ──────────────
   app.use('/api/mesas', crearMesasRouter({ mesaEstadoService, mesas, pedidoService }));
@@ -93,6 +122,7 @@ function crearApp() {
     app,
     server,
     io,
+    db,
     pedidoService,
     mesaService,
     mesaEstadoService,
