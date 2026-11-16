@@ -97,7 +97,8 @@ class MesasSQLite {
       insertar: db.prepare("INSERT INTO mesas (id, numero, estado) VALUES (?, ?, 'libre')"),
       obtener: db.prepare('SELECT id, numero, estado FROM mesas WHERE id = ?'),
       cambiarEstado: db.prepare('UPDATE mesas SET estado = ? WHERE id = ?'),
-      listar: db.prepare('SELECT id, numero, estado FROM mesas ORDER BY numero')
+      listar: db.prepare('SELECT id, numero, estado FROM mesas ORDER BY numero'),
+      eliminar: db.prepare('DELETE FROM mesas WHERE id = ?')
     };
 
     if (this._sql.contar.get().n === 0) {
@@ -123,6 +124,27 @@ class MesasSQLite {
 
   listar() {
     return this._sql.listar.all();
+  }
+
+  /**
+   * Agrega una mesa libre con el número indicado.
+   * Lanza un error si ya existe (el id es clave primaria).
+   * @param {number} numero
+   * @returns {{ id: string, numero: number, estado: string }}
+   */
+  agregar(numero) {
+    const id = `Mesa ${numero}`;
+    this._sql.insertar.run(id, numero);
+    return { id, numero, estado: 'libre' };
+  }
+
+  /**
+   * Elimina una mesa. Si no existe, no hace nada.
+   * Si la mesa tiene un pedido vigente, la clave foránea de pedidos lo impide y lanza error.
+   * @param {string} mesaId
+   */
+  eliminar(mesaId) {
+    this._sql.eliminar.run(mesaId);
   }
 }
 

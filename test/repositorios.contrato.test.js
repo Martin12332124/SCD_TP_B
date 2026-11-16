@@ -140,6 +140,35 @@ describe.each(Object.keys(implementaciones))('Contrato de repositorios (%s)', (n
       repos.mesas.listar()[0].estado = 'ocupada';
       expect(repos.mesas.obtener('Mesa 1').estado).toBe('libre');
     });
+
+    test('agregar crea una mesa libre y la devuelve', () => {
+      const nueva = repos.mesas.agregar(11);
+      expect(nueva).toEqual({ id: 'Mesa 11', numero: 11, estado: 'libre' });
+      expect(repos.mesas.obtener('Mesa 11')).toEqual(nueva);
+      expect(repos.mesas.listar()).toHaveLength(11);
+    });
+
+    test('la lista sigue ordenada por número aunque se agreguen en desorden', () => {
+      repos.mesas.eliminar('Mesa 4');
+      repos.mesas.agregar(20);
+      repos.mesas.agregar(15);
+      repos.mesas.agregar(4);
+      const numeros = repos.mesas.listar().map((m) => m.numero);
+      expect(numeros).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20]);
+    });
+
+    test('agregar una mesa que ya existe lanza un error y no la duplica', () => {
+      expect(() => repos.mesas.agregar(3)).toThrow();
+      expect(repos.mesas.listar()).toHaveLength(10);
+    });
+
+    test('eliminar quita la mesa; eliminar una inexistente no hace nada', () => {
+      repos.mesas.eliminar('Mesa 7');
+      expect(repos.mesas.obtener('Mesa 7')).toBeNull();
+      expect(repos.mesas.listar()).toHaveLength(9);
+      expect(() => repos.mesas.eliminar('Mesa 99')).not.toThrow();
+      expect(repos.mesas.listar()).toHaveLength(9);
+    });
   });
 
   describe('ítems del menú', () => {
@@ -267,6 +296,12 @@ describe('Repositorios SQLite: detalles propios', () => {
     expect(trasReinicio.listar()).toHaveLength(8);
     expect(trasReinicio.obtener('Mesa 9')).toBeNull();
     expect(trasReinicio.obtener('Mesa 3').estado).toBe('ocupada');
+  });
+
+  test('una mesa con pedido vigente no se puede eliminar (clave foránea)', () => {
+    pedidos.guardar('Mesa 2', { mesa: 'Mesa 2', estado: 'Recibido 📝' });
+    expect(() => mesas.eliminar('Mesa 2')).toThrow();
+    expect(mesas.obtener('Mesa 2')).not.toBeNull();
   });
 
   test('con la tabla vacía crea la cantidad de mesas indicada', () => {
