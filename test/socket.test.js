@@ -168,3 +168,26 @@ describe('Socket.io: configuración de mesas', () => {
     expect(mesas.map((m) => m.numero)).toEqual([2, 3, 4, 5, 6, 7, 8, 9, 10]);
   });
 });
+
+describe('Socket.io: estado del pedido en estado_mesas', () => {
+  test('el estado inicial trae estadoPedido en cada mesa', async () => {
+    const segundo = conectar(`http://127.0.0.1:${ctx.server.address().port}`, {
+      transports: ['websocket']
+    });
+    const mesas = await esperar(segundo, 'estado_mesas');
+    segundo.close();
+    expect(mesas[0]).toEqual({ id: 'Mesa 1', numero: 1, estado: 'libre', estadoPedido: null });
+  });
+
+  test('al tomar un pedido, estado_mesas llega con el estado del pedido de esa mesa', async () => {
+    const evento = esperar(cliente, 'estado_mesas');
+    cliente.emit('actualizar_pedido', { mesa: 'Mesa 4', estado: 'Recibido 📝' });
+    const mesas = await evento;
+    expect(mesas.find((m) => m.id === 'Mesa 4')).toEqual({
+      id: 'Mesa 4',
+      numero: 4,
+      estado: 'ocupada',
+      estadoPedido: 'Recibido 📝'
+    });
+  });
+});

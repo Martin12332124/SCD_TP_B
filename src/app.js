@@ -21,6 +21,7 @@ const {
   NotificadorTransaccional,
   envolverEnTransaccion
 } = require('./infraestructura/sqlite/transacciones');
+const { MesasConEstadoPedido } = require('./infraestructura/mesas-con-pedido');
 const { SocketNotificador } = require('./infraestructura/notificador');
 const { crearMesasRouter } = require('./presentacion/mesas.router');
 const { crearMenuItemsRouter } = require('./presentacion/menu-items.router');
@@ -58,7 +59,9 @@ function crearApp({ rutaDb = ':memory:' } = {}) {
   // Los tres repositorios comparten la misma conexión para que una transacción los abarque.
   const db = abrirBaseDeDatos(rutaDb);
   const pedidos = new PedidosSQLite(db);
-  const mesas = new MesasSQLite(db, 10); // 10 mesas iniciales, solo si la tabla está vacía
+  // 10 mesas iniciales, solo si la tabla está vacía. El decorador agrega a cada mesa
+  // el estado de su pedido (estadoPedido), que viaja en la API y en 'estado_mesas'.
+  const mesas = new MesasConEstadoPedido(new MesasSQLite(db, 10), pedidos);
   // La semilla del menú solo se inserta si la tabla está vacía.
   const menuItems = new MenuItemsSQLite(db, [
     { id: 1, nombre: 'Pizza Margarita', precioBase: 8500, disponible: true },

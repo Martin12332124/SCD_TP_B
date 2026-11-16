@@ -86,6 +86,35 @@ describe('API de mesas (US-08 y US-09)', () => {
   });
 });
 
+describe('API de mesas: estado del pedido en la lista', () => {
+  test('GET /api/mesas incluye estadoPedido: null en las mesas sin pedido', async () => {
+    const { mesas } = (await llamar('GET', '/api/mesas')).json;
+    expect(mesas[0]).toEqual({ id: 'Mesa 1', numero: 1, estado: 'libre', estadoPedido: null });
+    expect(mesas.every((m) => m.estadoPedido === null)).toBe(true);
+  });
+
+  test('GET /api/mesas y GET /api/mesas/:numero reflejan el estado del pedido vigente', async () => {
+    ctx.pedidoService.actualizarEstado({ mesa: 'Mesa 2', estado: 'Recibido 📝' });
+    ctx.pedidoService.confirmarPedido({ mesa: 'Mesa 5', items: [{ id: 1, cantidad: 1 }] });
+
+    const { mesas } = (await llamar('GET', '/api/mesas')).json;
+    expect(mesas.find((m) => m.numero === 2)).toMatchObject({
+      estado: 'ocupada',
+      estadoPedido: 'Recibido 📝'
+    });
+    expect(mesas.find((m) => m.numero === 5).estadoPedido).toBe('En Cocina 🍳');
+    expect(mesas.find((m) => m.numero === 1).estadoPedido).toBeNull();
+
+    const una = (await llamar('GET', '/api/mesas/5')).json.mesa;
+    expect(una).toEqual({
+      id: 'Mesa 5',
+      numero: 5,
+      estado: 'ocupada',
+      estadoPedido: 'En Cocina 🍳'
+    });
+  });
+});
+
 describe('API de configuración de mesas (agregar y quitar)', () => {
   test('POST /api/mesas sin cuerpo agrega la mesa siguiente y responde 201', async () => {
     const r = await llamar('POST', '/api/mesas');
