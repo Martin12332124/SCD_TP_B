@@ -36,7 +36,26 @@ function abrirBaseDeDatos(ruta = RUTA_POR_DEFECTO) {
   db.pragma('foreign_keys = ON');
   db.pragma('busy_timeout = 5000');
   db.exec(ESQUEMA);
+  migrar(db);
   return db;
+}
+
+/**
+ * Migraciones aditivas para bases creadas con una versión anterior del esquema.
+ * CREATE TABLE IF NOT EXISTS no agrega columnas a una tabla que ya existe, así que
+ * cada columna nueva se agrega aquí solo si falta. Nunca se borran tablas ni datos.
+ *
+ * - pedidos.estado_desde: hora en que el pedido pasó a su estado actual. Los pedidos
+ *   que ya existían quedan con NULL (no se sabe desde cuándo están en ese estado).
+ */
+function migrar(db) {
+  const columnas = db
+    .prepare('PRAGMA table_info(pedidos)')
+    .all()
+    .map((c) => c.name);
+  if (!columnas.includes('estado_desde')) {
+    db.exec('ALTER TABLE pedidos ADD COLUMN estado_desde TEXT');
+  }
 }
 
 module.exports = { abrirBaseDeDatos, RUTA_POR_DEFECTO };

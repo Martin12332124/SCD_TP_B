@@ -109,7 +109,9 @@ servidor se cae entre dos escrituras:
 
 - `trasladarPedido`: el pedido podría quedar en dos mesas, y la de destino libre con un pedido.
   Eso además rompe la invariante, y desde ahí cada operación fallaría.
-- `actualizarEstado` a "Listo": el pedido se borra pero la mesa queda ocupada para siempre.
+- `actualizarEstado` a "Listo" (comportamiento de entonces): el pedido se borraba pero la mesa
+  podía quedar ocupada para siempre. Hoy "Listo" ya no borra nada; ver
+  [administracion-mesas.md](administracion-mesas.md).
 - `confirmarPedido` (4-5 escrituras): una comanda con ítems que nunca llegó a cocina.
 
 Solución, **sin modificar los servicios del dominio**: en `app.js`, `envolverEnTransaccion`
@@ -135,8 +137,9 @@ la aserción de invariante), ahora se deshace todo; antes, en memoria, quedaban 
 parciales.
 
 **Datos iniciales.** La semilla sigue en `app.js`.
-- Mesas: `INSERT OR IGNORE` de Mesa 1 a Mesa 10. Las existentes no se tocan, así un reinicio
-  no libera mesas ocupadas.
+- Mesas: las 10 mesas iniciales se crean **solo si la tabla está vacía** (primer arranque). Antes
+  se hacía `INSERT OR IGNORE` de Mesa 1 a Mesa 10 en cada arranque, lo que volvía a crear las
+  mesas que el restaurante hubiera quitado. Ver [administracion-mesas.md](administracion-mesas.md).
 - Menú: la semilla se inserta **solo si la tabla está vacía**. El menú es dato del administrador:
   si renombró o cambió un precio, reiniciar no lo pisa ni duplica ítems.
 
@@ -257,7 +260,8 @@ Más el commit de esta documentación: `docs: documentar la persistencia con SQL
   mecanismo simple con `PRAGMA user_version`.
 - **Node 20 terminó su soporte en abril de 2026.** Subir el CI a Node 22 permitiría pasar a
   better-sqlite3 13.x.
-- **Cantidad de mesas.** Si se reduce `MesasSQLite(db, 10)`, las mesas sobrantes quedan en la base.
+- **Cantidad de mesas.** Ya no depende de `MesasSQLite(db, 10)` después del primer arranque: se
+  agregan y quitan desde la API (ver [administracion-mesas.md](administracion-mesas.md)).
 - **Ítems de pedido sin menú.** `PedidoService` sin `menuItems` no valida el `id` de cada ítem;
   con SQLite, un `id` vacío fallaría por `NOT NULL`. En producción siempre se inyecta el menú, así
   que no ocurre.

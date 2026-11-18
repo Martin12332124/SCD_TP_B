@@ -137,3 +137,64 @@ describe('Socket.io: trasladar_pedido (US-05)', () => {
     expect(r).toEqual({ ok: false, tipo: 'ERROR_INTERNO', error: 'fallo en traslado' });
   });
 });
+
+describe('Socket.io: configuración de mesas', () => {
+  const api = (metodo, ruta) =>
+    fetch(`http://127.0.0.1:${ctx.server.address().port}${ruta}`, { method: metodo });
+
+  test('al agregar una mesa por la API, los clientes reciben estado_mesas con la lista nueva', async () => {
+    const evento = esperar(cliente, 'estado_mesas');
+    await api('POST', '/api/mesas');
+    const mesas = await evento;
+    expect(mesas).toHaveLength(11);
+    expect(mesas[10]).toMatchObject({ id: 'Mesa 11', numero: 11, estado: 'libre' });
+  });
+
+  test('al quitar una mesa por la API, los clientes reciben estado_mesas sin ella', async () => {
+    const evento = esperar(cliente, 'estado_mesas');
+    await api('DELETE', '/api/mesas/10');
+    const mesas = await evento;
+    expect(mesas).toHaveLength(9);
+    expect(mesas.map((m) => m.id)).not.toContain('Mesa 10');
+  });
+
+  test('un cliente que se conecta después recibe la lista ya modificada', async () => {
+    await api('DELETE', '/api/mesas/1');
+    const segundo = conectar(`http://127.0.0.1:${ctx.server.address().port}`, {
+      transports: ['websocket']
+    });
+    const mesas = await esperar(segundo, 'estado_mesas');
+    segundo.close();
+    expect(mesas.map((m) => m.numero)).toEqual([2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  });
+});
+
+describe('Socket.io: estado del pedido en estado_mesas', () => {
+  test('el estado inicial trae estadoPedido en cada mesa', async () => {
+    const segundo = conectar(`http://127.0.0.1:${ctx.server.address().port}`, {
+      transports: ['websocket']
+    });
+    const mesas = await esperar(segundo, 'estado_mesas');
+    segundo.close();
+    expect(mesas[0]).toEqual({
+      id: 'Mesa 1',
+      numero: 1,
+      estado: 'libre',
+      estadoPedido: null,
+      pedidoDesde: null
+    });
+  });
+
+  test('al tomar un pedido, estado_mesas llega con el estado del pedido de esa mesa', async () => {
+    const evento = esperar(cliente, 'estado_mesas');
+    cliente.emit('actualizar_pedido', { mesa: 'Mesa 4', estado: 'Recibido 📝' });
+    const mesas = await evento;
+    expect(mesas.find((m) => m.id === 'Mesa 4')).toEqual({
+      id: 'Mesa 4',
+      numero: 4,
+      estado: 'ocupada',
+      estadoPedido: 'Recibido 📝',
+      pedidoDesde: expect.any(String)
+    });
+  });
+});

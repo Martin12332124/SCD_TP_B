@@ -98,3 +98,49 @@ describe('MesaEstadoService - formato estricto del número', () => {
     expect(r.tipo).toBe('ENTRADA_INVALIDA');
   });
 });
+
+describe('MesaEstadoService.cerrarMesa con pedido servido ("Listo 🍽️")', () => {
+  test('libera la mesa y cierra el pedido cuando ya está Listo', () => {
+    const { servicio, pedidos, mesas, notificador } = crearEntorno();
+    servicio.abrirMesa('4');
+    pedidos.guardar('Mesa 4', {
+      mesa: 'Mesa 4',
+      estado: 'Listo 🍽️',
+      items: [{ id: 1, nombre: 'Pizza', precioBase: 8500, cantidad: 1 }]
+    });
+    notificador.emitir.mockClear();
+
+    const r = servicio.cerrarMesa('4');
+
+    expect(r).toEqual({ ok: true, mesa: 'Mesa 4', estado: 'libre' });
+    expect(mesas.obtener('Mesa 4').estado).toBe('libre');
+    expect(pedidos.obtener('Mesa 4')).toBeNull();
+    expect(notificador.emitir).toHaveBeenCalledWith('estado_mesas', expect.any(Array));
+  });
+
+  test.each(['Recibido 📝', 'En Cocina 🍳'])(
+    'con el pedido en "%s" sigue rechazando con PEDIDO_ACTIVO y no borra el pedido',
+    (estado) => {
+      const { servicio, pedidos, mesas } = crearEntorno();
+      servicio.abrirMesa('4');
+      pedidos.guardar('Mesa 4', { mesa: 'Mesa 4', estado });
+
+      const r = servicio.cerrarMesa('4');
+
+      expect(r.ok).toBe(false);
+      expect(r.tipo).toBe('PEDIDO_ACTIVO');
+      expect(r.error).toContain(estado);
+      expect(mesas.obtener('Mesa 4').estado).toBe('ocupada');
+      expect(pedidos.obtener('Mesa 4').estado).toBe(estado);
+    }
+  );
+
+  test('después de liberar, la mesa puede abrirse y recibir un pedido nuevo', () => {
+    const { servicio, pedidos } = crearEntorno();
+    servicio.abrirMesa('4');
+    pedidos.guardar('Mesa 4', { mesa: 'Mesa 4', estado: 'Listo 🍽️' });
+    servicio.cerrarMesa('4');
+    expect(servicio.abrirMesa('4').ok).toBe(true);
+    expect(pedidos.obtener('Mesa 4')).toBeNull();
+  });
+});

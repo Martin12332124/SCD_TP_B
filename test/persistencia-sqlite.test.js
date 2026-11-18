@@ -81,6 +81,39 @@ describe('Conexión SQLite', () => {
   });
 });
 
+describe('Migración: columna pedidos.estado_desde', () => {
+  test('una base creada antes de la columna la recibe sin perder los pedidos', () => {
+    const ruta = path.join(carpeta, 'antigua.db');
+    // Base con el esquema anterior (pedidos sin estado_desde) y un pedido guardado
+    const Database = require('better-sqlite3');
+    const vieja = new Database(ruta);
+    vieja.exec(`
+      CREATE TABLE mesas (id TEXT PRIMARY KEY, numero INTEGER NOT NULL UNIQUE, estado TEXT NOT NULL);
+      CREATE TABLE pedidos (mesa_id TEXT PRIMARY KEY REFERENCES mesas (id), estado TEXT NOT NULL);
+      INSERT INTO mesas VALUES ('Mesa 1', 1, 'ocupada');
+      INSERT INTO pedidos VALUES ('Mesa 1', 'En Cocina 🍳');
+    `);
+    vieja.close();
+
+    const db = abrir(ruta);
+    const columnas = db
+      .prepare('PRAGMA table_info(pedidos)')
+      .all()
+      .map((c) => c.name);
+    expect(columnas).toContain('estado_desde');
+
+    // El pedido sigue ahí; como no se sabe desde cuándo está así, no trae estadoDesde
+    const pedidos = new PedidosSQLite(db);
+    expect(pedidos.obtener('Mesa 1')).toEqual({ mesa: 'Mesa 1', estado: 'En Cocina 🍳' });
+  });
+
+  test('abrir dos veces una base ya migrada no falla', () => {
+    const ruta = path.join(carpeta, 'r.db');
+    abrir(ruta).close();
+    expect(() => abrir(ruta)).not.toThrow();
+  });
+});
+
 describe('Transacciones y notificador diferido', () => {
   let db, espia, notificador;
 
@@ -182,6 +215,7 @@ describe('Atomicidad de los casos de uso sobre SQLite (REF-09)', () => {
     expect(pedidos.obtener('Mesa 1')).toEqual({
       mesa: 'Mesa 1',
       estado: 'En Cocina 🍳',
+      estadoDesde: expect.any(String),
       items: [{ id: 1, nombre: 'Pizza Margarita', precioBase: 8500, cantidad: 2 }]
     });
     expect(mesas.obtener('Mesa 1').estado).toBe('ocupada');
@@ -215,7 +249,11 @@ describe('Atomicidad de los casos de uso sobre SQLite (REF-09)', () => {
 
     expect(() => mesaService.trasladarPedido({ origen: 2, destino: 5 })).toThrow(DependenciaError);
 
-    expect(pedidos.obtener('Mesa 2')).toEqual({ mesa: 'Mesa 2', estado: 'Recibido 📝' });
+    expect(pedidos.obtener('Mesa 2')).toEqual({
+      mesa: 'Mesa 2',
+      estado: 'Recibido 📝',
+      estadoDesde: expect.any(String)
+    });
     expect(pedidos.obtener('Mesa 5')).toBeNull();
     expect(mesas.obtener('Mesa 2').estado).toBe('ocupada');
     expect(mesas.obtener('Mesa 5').estado).toBe('libre');
@@ -267,6 +305,66 @@ describe('Reinicio del servidor: los datos sobreviven (REF-09)', () => {
       expect(menu).toHaveLength(4);
       expect(menu.find((i) => i.id === 1).precioBase).toBe(9000);
       expect(menu.find((i) => i.id === 4).nombre).toBe('Jugo natural');
+    } finally {
+      await apagar(despues);
+    }
+  });
+
+  test('las mesas agregadas y quitadas se conservan al reiniciar', async () => {
+    const rutaDb = path.join(carpeta, 'mesas.db');
+
+    const antes = crearApp({ rutaDb });
+    expect(antes.mesaConfiguracionService.quitarMesa(9).ok).toBe(true);
+    expect(antes.mesaConfiguracionService.agregarMesa({ numero: 25 }).ok).toBe(true);
+    await apagar(antes);
+
+    const despues = crearApp({ rutaDb });
+    try {
+      // La mesa 9 no se vuelve a crear y la 25 sigue existiendo.
+      const numeros = despues.mesas.listar().map((m) => m.numero);
+      expect(numeros).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 10, 25]);
+    } finally {
+      await apagar(despues);
+    }
+  });
+
+  test('un pedido Listo y su mesa ocupada se conservan al reiniciar, hasta liberar la mesa', async () => {
+    const rutaDb = path.join(carpeta, 'listo.db');
+
+    const antes = crearApp({ rutaDb });
+    antes.pedidoService.confirmarPedido({ mesa: 'Mesa 6', items: [{ id: 3, cantidad: 2 }] });
+    antes.pedidoService.actualizarEstado({ mesa: 'Mesa 6', estado: 'Listo 🍽️' });
+    await apagar(antes);
+
+    const despues = crearApp({ rutaDb });
+    try {
+      expect(despues.mesas.obtener('Mesa 6')).toMatchObject({
+        estado: 'ocupada',
+        estadoPedido: 'Listo 🍽️'
+      });
+      expect(despues.pedidoService.obtenerResumen('Mesa 6').total).toBe(13000);
+
+      // Liberar la mesa cierra el pedido
+      expect(despues.mesaEstadoService.cerrarMesa('6').ok).toBe(true);
+      expect(despues.pedidos.obtener('Mesa 6')).toBeNull();
+      expect(despues.mesas.obtener('Mesa 6').estado).toBe('libre');
+    } finally {
+      await apagar(despues);
+    }
+  });
+
+  test('la hora del estado del pedido se conserva al reiniciar y viaja en la lista de mesas', async () => {
+    const rutaDb = path.join(carpeta, 'tiempos.db');
+
+    const antes = crearApp({ rutaDb });
+    antes.pedidoService.actualizarEstado({ mesa: 'Mesa 4', estado: 'Recibido 📝' });
+    const desde = antes.pedidos.obtener('Mesa 4').estadoDesde;
+    await apagar(antes);
+
+    const despues = crearApp({ rutaDb });
+    try {
+      expect(desde).toEqual(expect.any(String));
+      expect(despues.mesas.obtener('Mesa 4').pedidoDesde).toBe(desde);
     } finally {
       await apagar(despues);
     }

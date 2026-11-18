@@ -7,22 +7,25 @@
 
 /**
  * Repositorio de pedidos vigentes, indexados por mesa (ej. "Mesa 3").
- * Un pedido es { mesa, estado, items? }; items se guarda en la tabla pedido_items.
+ * Un pedido es { mesa, estado, estadoDesde?, items? }; items se guarda en la tabla
+ * pedido_items. estadoDesde (hora del último cambio de estado) solo aparece si se guardó.
  */
 class PedidosSQLite {
   /** @param {import('better-sqlite3').Database} db */
   constructor(db) {
     this._db = db;
     this._sql = {
-      obtener: db.prepare('SELECT mesa_id, estado FROM pedidos WHERE mesa_id = ?'),
-      todos: db.prepare('SELECT mesa_id, estado FROM pedidos ORDER BY mesa_id'),
+      obtener: db.prepare('SELECT mesa_id, estado, estado_desde FROM pedidos WHERE mesa_id = ?'),
+      todos: db.prepare('SELECT mesa_id, estado, estado_desde FROM pedidos ORDER BY mesa_id'),
       items: db.prepare(
         `SELECT item_id AS id, nombre, precio_base AS precioBase, cantidad
          FROM pedido_items WHERE mesa_id = ? ORDER BY posicion`
       ),
       upsert: db.prepare(
-        `INSERT INTO pedidos (mesa_id, estado) VALUES (?, ?)
-         ON CONFLICT (mesa_id) DO UPDATE SET estado = excluded.estado`
+        `INSERT INTO pedidos (mesa_id, estado, estado_desde) VALUES (?, ?, ?)
+         ON CONFLICT (mesa_id) DO UPDATE SET
+           estado = excluded.estado,
+           estado_desde = excluded.estado_desde`
       ),
       borrarItems: db.prepare('DELETE FROM pedido_items WHERE mesa_id = ?'),
       insertarItem: db.prepare(
@@ -34,7 +37,7 @@ class PedidosSQLite {
 
     // Guardar toca dos tablas: se hace en una transacción para que no quede a medias.
     this._guardar = db.transaction((mesa, pedido) => {
-      this._sql.upsert.run(mesa, pedido.estado);
+      this._sql.upsert.run(mesa, pedido.estado, pedido.estadoDesde ?? null);
       this._sql.borrarItems.run(mesa);
       (pedido.items || []).forEach((item, posicion) => {
         this._sql.insertarItem.run(
@@ -52,6 +55,7 @@ class PedidosSQLite {
   /** Arma el objeto pedido. Sin ítems no incluye la propiedad items (igual que en memoria). */
   _armar(fila) {
     const pedido = { mesa: fila.mesa_id, estado: fila.estado };
+    if (fila.estado_desde) pedido.estadoDesde = fila.estado_desde;
     const items = this._sql.items.all(fila.mesa_id);
     if (items.length > 0) pedido.items = items;
     return pedido;
@@ -81,29 +85,33 @@ class PedidosSQLite {
 }
 
 /**
- * Repositorio de mesas. Al construirse asegura que existan las mesas 1..cantidad,
- * sin tocar el estado de las que ya estaban (un reinicio no libera mesas ocupadas).
+ * Repositorio de mesas. Las mesas iniciales (1..cantidad) se crean solo si la tabla
+ * está vacía, es decir, la primera vez que se usa la base. En los arranques siguientes
+ * no se toca nada: así un reinicio no libera mesas ocupadas ni vuelve a crear las mesas
+ * que el restaurante haya quitado.
  */
 class MesasSQLite {
   /**
    * @param {import('better-sqlite3').Database} db
-   * @param {number} [cantidad=10]
+   * @param {number} [cantidad=10] - Mesas que se crean si la tabla está vacía
    */
   constructor(db, cantidad = 10) {
     this._sql = {
-      sembrar: db.prepare(
-        "INSERT OR IGNORE INTO mesas (id, numero, estado) VALUES (?, ?, 'libre')"
-      ),
+      contar: db.prepare('SELECT COUNT(*) AS n FROM mesas'),
+      insertar: db.prepare("INSERT INTO mesas (id, numero, estado) VALUES (?, ?, 'libre')"),
       obtener: db.prepare('SELECT id, numero, estado FROM mesas WHERE id = ?'),
       cambiarEstado: db.prepare('UPDATE mesas SET estado = ? WHERE id = ?'),
-      listar: db.prepare('SELECT id, numero, estado FROM mesas ORDER BY numero')
+      listar: db.prepare('SELECT id, numero, estado FROM mesas ORDER BY numero'),
+      eliminar: db.prepare('DELETE FROM mesas WHERE id = ?')
     };
 
-    db.transaction(() => {
-      for (let i = 1; i <= cantidad; i++) {
-        this._sql.sembrar.run(`Mesa ${i}`, i);
-      }
-    })();
+    if (this._sql.contar.get().n === 0) {
+      db.transaction(() => {
+        for (let i = 1; i <= cantidad; i++) {
+          this._sql.insertar.run(`Mesa ${i}`, i);
+        }
+      })();
+    }
   }
 
   obtener(mesaId) {
@@ -120,6 +128,27 @@ class MesasSQLite {
 
   listar() {
     return this._sql.listar.all();
+  }
+
+  /**
+   * Agrega una mesa libre con el número indicado.
+   * Lanza un error si ya existe (el id es clave primaria).
+   * @param {number} numero
+   * @returns {{ id: string, numero: number, estado: string }}
+   */
+  agregar(numero) {
+    const id = `Mesa ${numero}`;
+    this._sql.insertar.run(id, numero);
+    return { id, numero, estado: 'libre' };
+  }
+
+  /**
+   * Elimina una mesa. Si no existe, no hace nada.
+   * Si la mesa tiene un pedido vigente, la clave foránea de pedidos lo impide y lanza error.
+   * @param {string} mesaId
+   */
+  eliminar(mesaId) {
+    this._sql.eliminar.run(mesaId);
   }
 }
 

@@ -3,6 +3,7 @@
 // Dependencias explícitas inyectadas por constructor: pedidos, mesas, notificador.
 
 const { verificarConsistenciaMesasPedidos } = require('./consistencia');
+const { ESTADO_LISTO } = require('./pedido.service');
 
 /**
  * MesaEstadoService
@@ -17,7 +18,8 @@ const { verificarConsistenciaMesasPedidos } = require('./consistencia');
  *   - abrirMesa: solo puede abrirse una mesa que esté libre.
  *     Al abrir se marca como 'ocupada' y se emite el evento 'estado_mesas'.
  *   - cerrarMesa: solo puede cerrarse una mesa que esté ocupada y SIN pedido
- *     activo pendiente (es decir, ya sin pedido vigente en el repositorio).
+ *     en curso (Recibido o En Cocina). Si su pedido ya está "Listo 🍽️", se
+ *     cierra junto con la mesa.
  *     Al cerrar se marca como 'libre' y se emite el evento 'estado_mesas'.
  */
 class MesaEstadoService {
@@ -126,16 +128,17 @@ class MesaEstadoService {
   // ─── caso de uso: cerrar mesa ──────────────────────────────────────────────
 
   /**
-   * Cierra (marca como 'libre') una mesa que está 'ocupada' y sin pedido activo.
+   * Cierra (marca como 'libre') una mesa que está 'ocupada' y sin pedido en curso.
    *
    * Precondiciones:
    *   1. numero es un entero positivo y la mesa existe.
    *   2. La mesa está en estado 'ocupada'.
-   *   3. No existe un pedido vigente asociado a la mesa (el pedido fue servido/
-   *      eliminado previamente por PedidoService antes de cerrar la mesa).
+   *   3. La mesa no tiene un pedido en curso: o no tiene pedido, o su pedido
+   *      ya está "Listo 🍽️" (servido).
    *
    * Postcondiciones:
-   *   1. La mesa queda en estado 'libre'.
+   *   1. La mesa queda en estado 'libre' y sin pedido vigente (si tenía uno
+   *      "Listo 🍽️", se elimina).
    *   2. Se emite 'estado_mesas' con la lista actualizada.
    *
    * @param {string|number} numero
@@ -168,9 +171,9 @@ class MesaEstadoService {
       };
     }
 
-    // ── Regla de negocio: no cerrar con pedido activo ──────────────────
+    // ── Regla de negocio: no cerrar con un pedido en curso ─────────────
     const pedidoVigente = this.pedidos.obtener(mesaId);
-    if (pedidoVigente) {
+    if (pedidoVigente && pedidoVigente.estado !== ESTADO_LISTO) {
       return {
         ok: false,
         tipo: 'PEDIDO_ACTIVO',
@@ -180,6 +183,8 @@ class MesaEstadoService {
     }
 
     // ── Procesamiento ──────────────────────────────────────────────────
+    // Un pedido ya servido ("Listo 🍽️") se cierra junto con la mesa.
+    if (pedidoVigente) this.pedidos.eliminar(mesaId);
     this.mesas.liberar(mesaId);
 
     // ── Invariante (aserción interna) ──────────────────────────────────

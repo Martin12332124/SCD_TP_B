@@ -9,6 +9,7 @@ const { Server } = require('socket.io');
 const { PedidoService } = require('./dominio/pedido.service');
 const { MesaService } = require('./dominio/mesa.service');
 const { MesaEstadoService } = require('./dominio/mesa-estado.service');
+const { MesaConfiguracionService } = require('./dominio/mesa-configuracion.service');
 const { MenuItemService } = require('./dominio/menu-item.service');
 const { abrirBaseDeDatos } = require('./infraestructura/sqlite/conexion');
 const {
@@ -20,6 +21,7 @@ const {
   NotificadorTransaccional,
   envolverEnTransaccion
 } = require('./infraestructura/sqlite/transacciones');
+const { MesasConEstadoPedido } = require('./infraestructura/mesas-con-pedido');
 const { SocketNotificador } = require('./infraestructura/notificador');
 const { crearMesasRouter } = require('./presentacion/mesas.router');
 const { crearMenuItemsRouter } = require('./presentacion/menu-items.router');
@@ -57,7 +59,9 @@ function crearApp({ rutaDb = ':memory:' } = {}) {
   // Los tres repositorios comparten la misma conexión para que una transacción los abarque.
   const db = abrirBaseDeDatos(rutaDb);
   const pedidos = new PedidosSQLite(db);
-  const mesas = new MesasSQLite(db, 10); // crea las mesas que falten, sin tocar las existentes
+  // 10 mesas iniciales, solo si la tabla está vacía. El decorador agrega a cada mesa
+  // el estado de su pedido (estadoPedido), que viaja en la API y en 'estado_mesas'.
+  const mesas = new MesasConEstadoPedido(new MesasSQLite(db, 10), pedidos);
   // La semilla del menú solo se inserta si la tabla está vacía.
   const menuItems = new MenuItemsSQLite(db, [
     { id: 1, nombre: 'Pizza Margarita', precioBase: 8500, disponible: true },
@@ -70,20 +74,25 @@ function crearApp({ rutaDb = ':memory:' } = {}) {
   const pedidoService = new PedidoService({ pedidos, mesas, notificador, menuItems });
   const mesaService = new MesaService({ pedidos, mesas, notificador });
   const mesaEstadoService = new MesaEstadoService({ pedidos, mesas, notificador });
+  const mesaConfiguracionService = new MesaConfiguracionService({ pedidos, mesas, notificador });
   const menuItemService = new MenuItemService({ menuItems, notificador });
 
   // Cada caso de uso que escribe corre en una transacción: se guarda completo o nada.
   envolverEnTransaccion(db, notificador, pedidoService, ['actualizarEstado', 'confirmarPedido']);
   envolverEnTransaccion(db, notificador, mesaService, ['trasladarPedido']);
   envolverEnTransaccion(db, notificador, mesaEstadoService, ['abrirMesa', 'cerrarMesa']);
+  envolverEnTransaccion(db, notificador, mesaConfiguracionService, ['agregarMesa', 'quitarMesa']);
   envolverEnTransaccion(db, notificador, menuItemService, [
     'crearItem',
     'editarItem',
     'cambiarDisponibilidad'
   ]);
 
-  // ── API REST (US-08, US-09): gestión de estado de mesas ──────────────
-  app.use('/api/mesas', crearMesasRouter({ mesaEstadoService, mesas, pedidoService }));
+  // ── API REST (US-08, US-09): estado de mesas, y agregar o quitar mesas ──
+  app.use(
+    '/api/mesas',
+    crearMesasRouter({ mesaEstadoService, mesas, pedidoService, mesaConfiguracionService })
+  );
 
   // ── API REST (US-07): gestión de ítems del menú ───────────────────
   app.use('/api/menu-items', crearMenuItemsRouter({ menuItemService }));
@@ -126,6 +135,7 @@ function crearApp({ rutaDb = ':memory:' } = {}) {
     pedidoService,
     mesaService,
     mesaEstadoService,
+    mesaConfiguracionService,
     menuItemService,
     pedidos,
     mesas,

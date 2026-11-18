@@ -271,3 +271,39 @@ describe('MesaService.trasladarPedido – dependencia no disponible', () => {
     }
   });
 });
+
+describe('MesaService.trasladarPedido con pedido servido ("Listo 🍽️")', () => {
+  test('traslada un pedido Listo conservando su estado y sus ítems', () => {
+    const pedidos = new PedidosEnMemoria();
+    const mesas = new MesasEnMemoria(10);
+    const servicio = new MesaService({ pedidos, mesas, notificador: new NotificadorEspia() });
+    const items = [{ id: 1, nombre: 'Pizza', precioBase: 8500, cantidad: 2 }];
+    mesas.ocupar('Mesa 3');
+    pedidos.guardar('Mesa 3', { mesa: 'Mesa 3', estado: 'Listo 🍽️', items });
+
+    const r = servicio.trasladarPedido({ origen: 3, destino: 8 });
+
+    expect(r).toEqual({ ok: true, origen: 'Mesa 3', destino: 'Mesa 8', estado: 'Listo 🍽️' });
+    expect(pedidos.obtener('Mesa 8')).toEqual({ mesa: 'Mesa 8', estado: 'Listo 🍽️', items });
+    expect(pedidos.obtener('Mesa 3')).toBeNull();
+    expect(mesas.obtener('Mesa 3').estado).toBe('libre');
+  });
+});
+
+describe('MesaService.trasladarPedido: el tiempo del pedido no se reinicia', () => {
+  test('el pedido trasladado conserva su estadoDesde', () => {
+    const pedidos = new PedidosEnMemoria();
+    const mesas = new MesasEnMemoria(10);
+    const servicio = new MesaService({ pedidos, mesas, notificador: new NotificadorEspia() });
+    mesas.ocupar('Mesa 3');
+    pedidos.guardar('Mesa 3', {
+      mesa: 'Mesa 3',
+      estado: 'En Cocina 🍳',
+      estadoDesde: '2026-11-16T12:00:00.000Z'
+    });
+
+    servicio.trasladarPedido({ origen: 3, destino: 6 });
+
+    expect(pedidos.obtener('Mesa 6').estadoDesde).toBe('2026-11-16T12:00:00.000Z');
+  });
+});

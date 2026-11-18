@@ -58,6 +58,30 @@ class MesasEnMemoria {
   listar() {
     return this._mesas.map((m) => ({ ...m }));
   }
+
+  /**
+   * Agrega una mesa libre con el número indicado y mantiene la lista ordenada por número.
+   * Lanza un error si ya existe.
+   * @param {number} numero
+   * @returns {{ id: string, numero: number, estado: string }}
+   */
+  agregar(numero) {
+    const id = `Mesa ${numero}`;
+    if (this._mesas.some((m) => m.id === id)) {
+      throw new Error(`La mesa ${numero} ya existe.`);
+    }
+    this._mesas.push({ id, numero, estado: 'libre' });
+    this._mesas.sort((a, b) => a.numero - b.numero);
+    return { id, numero, estado: 'libre' };
+  }
+
+  /**
+   * Elimina una mesa. Si no existe, no hace nada.
+   * @param {string} mesaId
+   */
+  eliminar(mesaId) {
+    this._mesas = this._mesas.filter((m) => m.id !== mesaId);
+  }
 }
 
 /**
