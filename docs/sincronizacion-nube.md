@@ -17,7 +17,8 @@ El restaurante funciona sin internet: el servidor local (este repo, con SQLite) 
   El POS no espera nunca a la nube. Al volver la conexión, el siguiente ciclo sube el estado y aplica
   las órdenes que esperaban.
 
-Sin `.env`, el servidor es 100 % local, igual que antes: no se carga la librería de Supabase ni se
+Sin `SUPABASE_URL` y `SUPABASE_SECRET_KEY`, el servidor es 100 % local, igual que antes (el `.env`
+igual necesita `JWT_SECRET` desde el login, ver `docs/inicio-de-sesion.md`): no se carga la librería de Supabase ni se
 crea ninguna tabla nueva.
 
 ## 2. Archivos creados y modificados
@@ -51,7 +52,7 @@ crea ninguna tabla nueva.
 | --- | --- | --- |
 | `mesas`, `menu_items`, `pedidos`, `pedido_items` | Solo el local, vía `sincronizar_estado` | Sí |
 | `estado_sincronizacion` (1 fila: hora de la última subida) | Solo el local | Sí |
-| `ordenes_pendientes` | Web: solo `tipo` y `payload`. Local: `estado`, `resultado`, `procesada_en` | No |
+| `ordenes_pendientes` | Web: solo `tipo` y `payload`. Local: `estado`, `resultado`, `procesada_en` | Solo sus propias órdenes |
 
 Tipos de orden y su payload (la misma forma que el cuerpo REST o el mensaje Socket.IO):
 
@@ -166,11 +167,11 @@ cobertura de líneas 98,29 %. Los tests existentes no se modificaron. Lo nuevo:
 
 ## 7. Puntos frágiles y pendientes
 
-- **La web no se entera de los rechazos.** Con los permisos pedidos (leer espejo + insertar órdenes),
-  la web no puede leer `ordenes_pendientes`; responde "orden enviada" y el cambio aparece cuando el
-  local lo aplica. Un rechazo solo se ve en Supabase y en la consola del local.
-- **La web en modo nube necesita sesión** (paso 2): las políticas son para `authenticated`; sin
-  login, el espejo se ve vacío.
+- **Resultado de las órdenes en la web.** Cada usuario puede leer sus propias órdenes (política
+  "leer orden propia"). La web espera hasta 8 s el resultado del local y muestra el mensaje real
+  (aplicada o rechazada con motivo). Si el local está sin internet, responde "orden enviada,
+  pendiente" y el cambio aparece cuando el local vuelve.
+- **La web en modo nube necesita sesión** (Supabase Auth): las políticas son para `authenticated`.
 - **Reloj del local:** `procesada_en` y `estado_desde` usan la hora del PC del restaurante.
 - **Un solo local:** si dos servidores locales sincronizaran al mismo proyecto, cada subida borraría
   lo del otro. Para varias sucursales hace falta `sucursal_id` y subir solo cambios (outbox).

@@ -119,6 +119,12 @@ guarda nada (REF-09).
 Detalles (esquema, decisiones, cómo abrir la base con DB Browser for SQLite):
 [docs/persistencia-sqlite.md](docs/persistencia-sqlite.md).
 
+### Inicio de sesión
+
+Todo exige sesión: `POST /api/auth/login` entrega un token (JWT) que la API REST y Socket.IO
+piden en cada uso. El `.env` necesita `JWT_SECRET` (sin él el servidor no arranca) y, la primera
+vez, `USUARIOS_INICIALES`. Detalle en [docs/inicio-de-sesion.md](docs/inicio-de-sesion.md).
+
 ### Sincronización con la nube (opcional)
 
 Si `.env` trae `SUPABASE_URL` y `SUPABASE_SECRET_KEY` (ver `.env.example`), el servidor mantiene una
@@ -203,10 +209,12 @@ _Espera un par de segundos. Aparecerán muchas líneas de texto en la terminal y
 Una vez instalado todo, para prender el sistema haz lo siguiente:
 
 1. Asegúrate de estar dentro de la carpeta del proyecto en la terminal.
-2. Ejecuta este comando mágico:
+2. Copia `.env.example` como `.env` y completa al menos `JWT_SECRET` y `USUARIOS_INICIALES`
+   (ver [docs/inicio-de-sesion.md](docs/inicio-de-sesion.md)).
+3. Ejecuta este comando (usa `npm start` y no `node index.js`: solo `npm start` lee el `.env`):
 
 ```bash
-node index.js
+npm start
 ```
 
 ### ¿Cómo sé si funcionó bien?
