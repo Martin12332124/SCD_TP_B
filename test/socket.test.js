@@ -4,7 +4,7 @@
 // Levanta la aplicación real en un puerto libre y se conecta con socket.io-client.
 
 const { io: conectar } = require('socket.io-client');
-const { crearApp } = require('../src/app');
+const { crearAppConSesion } = require('./sesion');
 
 let ctx;
 let cliente;
@@ -25,11 +25,14 @@ beforeEach(async () => {
   jest.spyOn(console, 'log').mockImplementation(() => {});
   jest.spyOn(console, 'error').mockImplementation(() => {});
 
-  ctx = crearApp();
+  ctx = crearAppConSesion();
   await new Promise((resolve) => ctx.server.listen(0, resolve));
   const puerto = ctx.server.address().port;
 
-  cliente = conectar(`http://127.0.0.1:${puerto}`, { transports: ['websocket'] });
+  cliente = conectar(`http://127.0.0.1:${puerto}`, {
+    transports: ['websocket'],
+    auth: { token: ctx.token }
+  });
   // Se registra antes de conectar: el servidor emite estado_mesas al conectarse.
   await esperar(cliente, 'estado_mesas');
 });
@@ -43,7 +46,8 @@ afterEach(async () => {
 describe('Socket.io: conexión', () => {
   test('al conectarse el cliente recibe el estado inicial de las 10 mesas', async () => {
     const segundo = conectar(`http://127.0.0.1:${ctx.server.address().port}`, {
-      transports: ['websocket']
+      transports: ['websocket'],
+      auth: { token: ctx.token }
     });
     const mesas = await esperar(segundo, 'estado_mesas');
     segundo.close();
@@ -140,7 +144,10 @@ describe('Socket.io: trasladar_pedido (US-05)', () => {
 
 describe('Socket.io: configuración de mesas', () => {
   const api = (metodo, ruta) =>
-    fetch(`http://127.0.0.1:${ctx.server.address().port}${ruta}`, { method: metodo });
+    fetch(`http://127.0.0.1:${ctx.server.address().port}${ruta}`, {
+      method: metodo,
+      headers: { Authorization: `Bearer ${ctx.token}` }
+    });
 
   test('al agregar una mesa por la API, los clientes reciben estado_mesas con la lista nueva', async () => {
     const evento = esperar(cliente, 'estado_mesas');
@@ -161,7 +168,8 @@ describe('Socket.io: configuración de mesas', () => {
   test('un cliente que se conecta después recibe la lista ya modificada', async () => {
     await api('DELETE', '/api/mesas/1');
     const segundo = conectar(`http://127.0.0.1:${ctx.server.address().port}`, {
-      transports: ['websocket']
+      transports: ['websocket'],
+      auth: { token: ctx.token }
     });
     const mesas = await esperar(segundo, 'estado_mesas');
     segundo.close();
@@ -172,7 +180,8 @@ describe('Socket.io: configuración de mesas', () => {
 describe('Socket.io: estado del pedido en estado_mesas', () => {
   test('el estado inicial trae estadoPedido en cada mesa', async () => {
     const segundo = conectar(`http://127.0.0.1:${ctx.server.address().port}`, {
-      transports: ['websocket']
+      transports: ['websocket'],
+      auth: { token: ctx.token }
     });
     const mesas = await esperar(segundo, 'estado_mesas');
     segundo.close();

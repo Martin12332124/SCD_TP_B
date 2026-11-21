@@ -2,6 +2,7 @@
 // Configuración de la aplicación Express + Socket.io
 // Usa PedidoService con dependencias explícitas y persistencia en SQLite.
 
+const crypto = require('crypto');
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -11,6 +12,15 @@ const { MesaService } = require('./dominio/mesa.service');
 const { MesaEstadoService } = require('./dominio/mesa-estado.service');
 const { MesaConfiguracionService } = require('./dominio/mesa-configuracion.service');
 const { MenuItemService } = require('./dominio/menu-item.service');
+const { UsuarioService } = require('./dominio/usuario.service');
+const { UsuariosSQLite } = require('./infraestructura/sqlite/usuarios-sqlite');
+const {
+  hashearContrasena,
+  verificarContrasena
+} = require('./infraestructura/seguridad/contrasenas');
+const { crearEmisorTokens } = require('./infraestructura/seguridad/tokens');
+const { crearAuthRouter } = require('./presentacion/auth.router');
+const { exigirToken, exigirTokenSocket } = require('./presentacion/autenticacion');
 const { abrirBaseDeDatos } = require('./infraestructura/sqlite/conexion');
 const {
   PedidosSQLite,
@@ -43,8 +53,12 @@ const { RegistroOrdenesSQLite } = require('./infraestructura/sincronizacion/regi
  *   Apagada por defecto: sin ella el sistema es 100 % local, igual que antes.
  *   Forma: { cliente, intervaloMs?, esperaMs?, consola? } (ver sincronizacion/sincronizador.js).
  *   crearApp solo la conecta; index.js la inicia con sincronizador.iniciar().
+ * @param {object} [opciones.autenticacion] - Inicio de sesión (siempre activo: no hay forma
+ *   de apagarlo). { secreto?, duracionToken? }. Sin `secreto` se usa uno aleatorio que
+ *   dura lo que dure el proceso (útil en tests); index.js exige JWT_SECRET.
+ *   Los usuarios iniciales los crea index.js con usuarioService.crearUsuariosIniciales().
  */
-function crearApp({ rutaDb = ':memory:', sincronizacion = null } = {}) {
+function crearApp({ rutaDb = ':memory:', sincronizacion = null, autenticacion = {} } = {}) {
   const app = express();
   const server = http.createServer(app);
 
@@ -59,7 +73,8 @@ function crearApp({ rutaDb = ':memory:', sincronizacion = null } = {}) {
   app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type');
+    // Authorization: el navegador la bloquea en peticiones a otro origen si no se permite aquí.
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     if (req.method === 'OPTIONS') return res.sendStatus(204);
     next();
   });
@@ -95,6 +110,15 @@ function crearApp({ rutaDb = ':memory:', sincronizacion = null } = {}) {
   const mesaEstadoService = new MesaEstadoService({ pedidos, mesas, notificador });
   const mesaConfiguracionService = new MesaConfiguracionService({ pedidos, mesas, notificador });
   const menuItemService = new MenuItemService({ menuItems, notificador });
+  const usuarioService = new UsuarioService({
+    usuarios: new UsuariosSQLite(db),
+    hashear: hashearContrasena,
+    verificar: verificarContrasena,
+    tokens: crearEmisorTokens(
+      autenticacion.secreto || crypto.randomBytes(32).toString('base64'),
+      { duracion: autenticacion.duracionToken }
+    )
+  });
 
   // Cada caso de uso que escribe corre en una transacción: se guarda completo o nada.
   envolverEnTransaccion(db, notificador, pedidoService, ['actualizarEstado', 'confirmarPedido']);
@@ -122,14 +146,19 @@ function crearApp({ rutaDb = ':memory:', sincronizacion = null } = {}) {
     });
   }
 
+  // ── Inicio de sesión: la única ruta de la API que no exige token ──
+  app.use('/api/auth', crearAuthRouter({ usuarioService }));
+  const conSesion = exigirToken(usuarioService);
+
   // ── API REST (US-08, US-09): estado de mesas, y agregar o quitar mesas ──
   app.use(
     '/api/mesas',
+    conSesion,
     crearMesasRouter({ mesaEstadoService, mesas, pedidoService, mesaConfiguracionService })
   );
 
   // ── API REST (US-07): gestión de ítems del menú ───────────────────
-  app.use('/api/menu-items', crearMenuItemsRouter({ menuItemService }));
+  app.use('/api/menu-items', conSesion, crearMenuItemsRouter({ menuItemService }));
 
   // Ruta básica de prueba
   app.get('/', (req, res) => {
@@ -137,6 +166,8 @@ function crearApp({ rutaDb = ':memory:', sincronizacion = null } = {}) {
   });
 
 // ── Socket.io: comunicación en tiempo real (ver presentacion/socket.handlers.js)
+  // Antes de 'connection': un cliente sin token válido no llega a conectarse.
+  io.use(exigirTokenSocket(usuarioService));
   registrarHandlersSocket(io, { pedidoService, mesaService, mesas });
 
 
@@ -171,6 +202,7 @@ function crearApp({ rutaDb = ':memory:', sincronizacion = null } = {}) {
     mesaEstadoService,
     mesaConfiguracionService,
     menuItemService,
+    usuarioService,
     pedidos,
     mesas,
     menuItems,
