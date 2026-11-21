@@ -17,7 +17,8 @@
 -- hasta que se otorga aquí):
 --   - anon (sin sesión): nada.
 --   - authenticated (web pública con sesión): leer las tablas espejo y
---     estado_sincronizacion; insertar en ordenes_pendientes solo las columnas tipo y payload.
+--     estado_sincronizacion; insertar en ordenes_pendientes solo las columnas tipo y payload,
+--     y leer SUS PROPIAS órdenes (para mostrar si el local las aplicó o rechazó, y por qué).
 --   - service_role (llave secreta del servidor local): todo lo necesario para sincronizar.
 --     service_role se salta RLS, pero igual necesita los GRANT.
 
@@ -199,6 +200,9 @@ grant select on public.mesas, public.menu_items, public.pedidos, public.pedido_i
 -- ...y dejar órdenes. GRANT por columna: solo tipo y payload. id, estado, resultado,
 -- creada_en, creada_por y procesada_en los pone la base o el servidor, nunca la web.
 grant insert (tipo, payload) on public.ordenes_pendientes to authenticated;
+-- ...y leer sus órdenes (la política de abajo limita a las propias). Así la web recibe el
+-- id al insertar y luego consulta si el local la aplicó o la rechazó, con el motivo.
+grant select on public.ordenes_pendientes to authenticated;
 grant usage on sequence public.ordenes_pendientes_id_seq to authenticated;
 
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -239,8 +243,13 @@ drop policy if exists "enviar orden propia" on public.ordenes_pendientes;
 create policy "enviar orden propia" on public.ordenes_pendientes
   for insert to authenticated
   with check (creada_por = (select auth.uid()));
--- No hay políticas de select/update/delete para authenticated: no puede leer ni
--- cambiar órdenes. service_role no necesita políticas (se salta RLS).
+-- Leer: solo las órdenes propias. Las de otros usuarios no se ven.
+drop policy if exists "leer orden propia" on public.ordenes_pendientes;
+create policy "leer orden propia" on public.ordenes_pendientes
+  for select to authenticated
+  using (creada_por = (select auth.uid()));
+-- No hay políticas de update/delete para authenticated: no puede cambiar ni borrar
+-- órdenes. service_role no necesita políticas (se salta RLS).
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- 6. Realtime: qué tablas avisan sus cambios
