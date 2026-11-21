@@ -26,14 +26,25 @@ const { SocketNotificador } = require('./infraestructura/notificador');
 const { crearMesasRouter } = require('./presentacion/mesas.router');
 const { crearMenuItemsRouter } = require('./presentacion/menu-items.router');
 const { registrarHandlersSocket } = require('./presentacion/socket.handlers');
+const { AplicadorOrdenes } = require('./presentacion/ordenes-nube');
+const {
+  Sincronizador,
+  NotificadorConAviso
+} = require('./infraestructura/sincronizacion/sincronizador');
+const { leerEstadoLocal } = require('./infraestructura/sincronizacion/estado-local');
+const { RegistroOrdenesSQLite } = require('./infraestructura/sincronizacion/registro-ordenes');
 
 /**
  * Crea la aplicación con sus dependencias.
  * @param {object} [opciones]
  * @param {string} [opciones.rutaDb=':memory:'] - Archivo SQLite. Por defecto una base en
  *   memoria, nueva en cada llamada (así los tests parten limpios); index.js pasa la ruta real.
+ * @param {object|null} [opciones.sincronizacion=null] - Réplica en la nube (Supabase).
+ *   Apagada por defecto: sin ella el sistema es 100 % local, igual que antes.
+ *   Forma: { cliente, intervaloMs?, esperaMs?, consola? } (ver sincronizacion/sincronizador.js).
+ *   crearApp solo la conecta; index.js la inicia con sincronizador.iniciar().
  */
-function crearApp({ rutaDb = ':memory:' } = {}) {
+function crearApp({ rutaDb = ':memory:', sincronizacion = null } = {}) {
   const app = express();
   const server = http.createServer(app);
 
@@ -69,7 +80,15 @@ function crearApp({ rutaDb = ':memory:' } = {}) {
     { id: 3, nombre: 'Ensalada César', precioBase: 6500, disponible: true }
   ]);
   // Retiene los eventos hasta que la transacción del caso de uso se confirma (REF-09).
-  const notificador = new NotificadorTransaccional(new SocketNotificador(io));
+  // Con sincronización, cada evento publicado (o sea, cada COMMIT) avisa además al
+  // sincronizador para que suba el estado a la nube.
+  let sincronizador = null;
+  const notificadorSocket = new SocketNotificador(io);
+  const notificador = new NotificadorTransaccional(
+    sincronizacion
+      ? new NotificadorConAviso(notificadorSocket, () => sincronizador.marcarCambio())
+      : notificadorSocket
+  );
 
   const pedidoService = new PedidoService({ pedidos, mesas, notificador, menuItems });
   const mesaService = new MesaService({ pedidos, mesas, notificador });
@@ -87,6 +106,21 @@ function crearApp({ rutaDb = ':memory:' } = {}) {
     'editarItem',
     'cambiarDisponibilidad'
   ]);
+
+  // ── Sincronización con la nube (opcional): local → Supabase y buzón de órdenes ──
+  if (sincronizacion) {
+    const aplicador = new AplicadorOrdenes({
+      servicios: { pedidoService, mesaService, mesaEstadoService, mesaConfiguracionService },
+      registro: new RegistroOrdenesSQLite(db)
+    });
+    // La orden y su registro en una sola transacción, como cualquier otro caso de uso.
+    envolverEnTransaccion(db, notificador, aplicador, ['aplicarYRegistrar']);
+    sincronizador = new Sincronizador({
+      ...sincronizacion,
+      leerEstado: () => leerEstadoLocal(db),
+      aplicarOrden: (orden) => aplicador.aplicar(orden)
+    });
+  }
 
   // ── API REST (US-08, US-09): estado de mesas, y agregar o quitar mesas ──
   app.use(
@@ -139,7 +173,8 @@ function crearApp({ rutaDb = ':memory:' } = {}) {
     menuItemService,
     pedidos,
     mesas,
-    menuItems
+    menuItems,
+    sincronizador
   };
 }
 
