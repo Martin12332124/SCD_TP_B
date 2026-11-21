@@ -119,6 +119,14 @@ guarda nada (REF-09).
 Detalles (esquema, decisiones, cómo abrir la base con DB Browser for SQLite):
 [docs/persistencia-sqlite.md](docs/persistencia-sqlite.md).
 
+### Sincronización con la nube (opcional)
+
+Si `.env` trae `SUPABASE_URL` y `SUPABASE_SECRET_KEY` (ver `.env.example`), el servidor mantiene una
+réplica en Supabase y aplica las órdenes que deja la web pública. Sin esas variables funciona 100 %
+local, como siempre. El esquema de Supabase está en `supabase/esquema.sql`. Detalle, cómo
+configurarlo y cómo probar un corte de internet en
+[docs/sincronizacion-nube.md](docs/sincronizacion-nube.md).
+
 ### Administración de mesas
 
 La cantidad de mesas ya no es fija: se agregan con `POST /api/mesas` y se quitan con
