@@ -21,6 +21,7 @@ const {
 const { crearEmisorTokens } = require('./infraestructura/seguridad/tokens');
 const { crearAuthRouter } = require('./presentacion/auth.router');
 const { exigirToken, exigirTokenSocket } = require('./presentacion/autenticacion');
+const { crearGateway } = require('./presentacion/gateway');
 const { abrirBaseDeDatos } = require('./infraestructura/sqlite/conexion');
 const {
   PedidosSQLite,
@@ -57,8 +58,17 @@ const { RegistroOrdenesSQLite } = require('./infraestructura/sincronizacion/regi
  *   de apagarlo). { secreto?, duracionToken? }. Sin `secreto` se usa uno aleatorio que
  *   dura lo que dure el proceso (útil en tests); index.js exige JWT_SECRET.
  *   Los usuarios iniciales los crea index.js con usuarioService.crearUsuariosIniciales().
+ * @param {object} [opciones.gateway] - API gateway (siempre activo, como el login).
+ *   { llaves?, limites?, registrar? } (ver presentacion/gateway.js). Sin `llaves` se usa una
+ *   aleatoria que nadie conoce (útil en tests que no tocan /api); index.js exige API_KEYS.
+ *   `registrar` recibe cada línea del registro de accesos; por defecto se descarta.
  */
-function crearApp({ rutaDb = ':memory:', sincronizacion = null, autenticacion = {} } = {}) {
+function crearApp({
+  rutaDb = ':memory:',
+  sincronizacion = null,
+  autenticacion = {},
+  gateway: opcionesGateway = {}
+} = {}) {
   const app = express();
   const server = http.createServer(app);
 
@@ -74,7 +84,8 @@ function crearApp({ rutaDb = ':memory:', sincronizacion = null, autenticacion = 
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
     // Authorization: el navegador la bloquea en peticiones a otro origen si no se permite aquí.
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    // x-api-key: la llave de la aplicación que valida el gateway.
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key');
     if (req.method === 'OPTIONS') return res.sendStatus(204);
     next();
   });
@@ -146,6 +157,17 @@ function crearApp({ rutaDb = ':memory:', sincronizacion = null, autenticacion = 
     });
   }
 
+  // ── API gateway: llave de aplicación, límite de peticiones y registro de accesos ──
+  // Delante de TODO /api (incluido el login). El preflight CORS (OPTIONS) ya se respondió
+  // arriba: el navegador no envía la llave en él.
+  const gateway = crearGateway({
+    ...opcionesGateway,
+    llaves: opcionesGateway.llaves ?? [
+      { nombre: 'aleatoria', llave: crypto.randomBytes(24).toString('base64') }
+    ]
+  });
+  app.use('/api', gateway.rutas);
+
   // ── Inicio de sesión: la única ruta de la API que no exige token ──
   app.use('/api/auth', crearAuthRouter({ usuarioService }));
   const conSesion = exigirToken(usuarioService);
@@ -165,11 +187,12 @@ function crearApp({ rutaDb = ':memory:', sincronizacion = null, autenticacion = 
     res.send('Servidor del Sistema de Pedidos del Restaurante operativo.');
   });
 
-// ── Socket.io: comunicación en tiempo real (ver presentacion/socket.handlers.js)
-  // Antes de 'connection': un cliente sin token válido no llega a conectarse.
+  // ── Socket.io: comunicación en tiempo real (ver presentacion/socket.handlers.js)
+  // Antes de 'connection': un cliente sin llave de aplicación ni token válido no llega a
+  // conectarse. Primero la llave (identifica la aplicación), luego el token (el usuario).
+  io.use(gateway.verificarSocket);
   io.use(exigirTokenSocket(usuarioService));
   registrarHandlersSocket(io, { pedidoService, mesaService, mesas });
-
 
   // ── Middleware de errores de Express 5 (DESPUÉS de montar rutas) ───
   // Captura JSON malformado y errores internos; devuelve JSON, no HTML.

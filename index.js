@@ -4,6 +4,7 @@
 
 const { crearApp } = require('./src/app');
 const { RUTA_POR_DEFECTO } = require('./src/infraestructura/sqlite/conexion');
+const { leerLlaves } = require('./src/presentacion/gateway');
 const { crearClienteSupabase } = require('./src/infraestructura/sincronizacion/cliente-supabase');
 
 // Inicio de sesión: sin JWT_SECRET el servidor NO arranca. La alternativa (arrancar sin
@@ -15,6 +16,20 @@ if (!JWT_SECRET || JWT_SECRET.length < 32) {
     'Falta JWT_SECRET en el .env (mínimo 32 caracteres). Arranca con "npm start", que es lo\n' +
       'que lee el .env. Para generar un secreto:\n' +
       "  node -e \"console.log(require('crypto').randomBytes(32).toString('base64'))\""
+  );
+  process.exit(1);
+}
+
+// API gateway: sin API_KEYS el servidor NO arranca, por la misma razón que con JWT_SECRET
+// (arrancar sin llaves dejaría la API abierta a cualquier aplicación).
+let llaves;
+try {
+  llaves = leerLlaves(process.env.API_KEYS);
+} catch (error) {
+  console.error(
+    `${error.message}\n` +
+      'Define API_KEYS en el .env con el formato nombre:llave,nombre2:llave2. Para generar una llave:\n' +
+      "  node -e \"console.log(require('crypto').randomBytes(24).toString('base64url'))\""
   );
   process.exit(1);
 }
@@ -33,7 +48,9 @@ const sincronizacion =
 const { server, io, db, sincronizador, usuarioService } = crearApp({
   rutaDb,
   sincronizacion,
-  autenticacion: { secreto: JWT_SECRET }
+  autenticacion: { secreto: JWT_SECRET },
+  // El registro de accesos va a la consola del servidor (una línea por petición).
+  gateway: { llaves, registrar: (linea) => console.log(linea) }
 });
 
 const PORT = process.env.PORT || 3000;
@@ -57,6 +74,7 @@ async function arrancar() {
     console.log(`=============================================`);
     console.log(` Servidor Restaurante corriendo en el puerto ${PORT}`);
     console.log(` Base de datos: ${rutaDb}`);
+    console.log(` API keys activas: ${llaves.map((l) => l.nombre).join(', ')}`);
     console.log(
       ` Nube (Supabase): ${sincronizador ? 'activada' : 'desactivada (sin SUPABASE_URL ni SUPABASE_SECRET_KEY)'}`
     );
