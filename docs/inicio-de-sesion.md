@@ -58,6 +58,10 @@ Agregar al `.env` (ver `.env.example`):
 | `JWT_SECRET` | `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"` |
 | `USUARIOS_INICIALES` | `usuario:contraseña,usuario2:contraseña2` (contraseña de 8 o más caracteres) |
 
+El token es la segunda capa: desde el API gateway, cada petición a `/api` (incluido el login) y cada
+conexión de Socket.IO también llevan la API key de la aplicación (`x-api-key`), ver
+[api-gateway.md](api-gateway.md).
+
 `npm start` muestra `Usuarios iniciales creados: N` la primera vez. Para agregar usuarios después,
 hay que vaciar la tabla `usuarios` (borra a todos) o agregar una ruta de administración (pendiente).
 

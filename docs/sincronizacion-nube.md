@@ -18,7 +18,8 @@ El restaurante funciona sin internet: el servidor local (este repo, con SQLite) 
   las órdenes que esperaban.
 
 Sin `SUPABASE_URL` y `SUPABASE_SECRET_KEY`, el servidor es 100 % local, igual que antes (el `.env`
-igual necesita `JWT_SECRET` desde el login, ver `docs/inicio-de-sesion.md`): no se carga la librería de Supabase ni se
+igual necesita `JWT_SECRET` desde el login y `API_KEYS` desde el API gateway, ver
+`docs/inicio-de-sesion.md` y `docs/api-gateway.md`): no se carga la librería de Supabase ni se
 crea ninguna tabla nueva.
 
 ## 2. Archivos creados y modificados
