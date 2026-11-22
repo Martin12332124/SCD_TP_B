@@ -20,6 +20,16 @@ class NubeEnMemoria {
     /** Si se define, marcarOrden falla después de N llamadas exitosas (corte a la mitad). */
     this.fallarMarcarDespuesDe = null;
     this._marcadas = 0;
+    /**
+     * Reloj de la "base de Supabase", en ms. Solo avanza con `avanzar`: así un test puede
+     * hacer que una orden "espere horas" sin esperar de verdad.
+     */
+    this.relojMs = 0;
+  }
+
+  /** Pasa el tiempo en la nube (las órdenes pendientes envejecen). */
+  avanzar(ms) {
+    this.relojMs += ms;
   }
 
   _verificarRed() {
@@ -38,7 +48,15 @@ class NubeEnMemoria {
     return this.ordenes
       .filter((o) => o.estado === 'pendiente')
       .sort((a, b) => a.id - b.id)
-      .map(({ id, tipo, payload }) => ({ id, tipo, payload }));
+      .map(({ id, tipo, payload, creadaMs }) => ({
+        id,
+        tipo,
+        payload,
+        // Como el cliente real: la edad la mide la "base", y `leidaEn` es el reloj monótono
+        // del local en el instante de la consulta.
+        edadMs: this.relojMs - creadaMs,
+        leidaEn: performance.now()
+      }));
   }
 
   async marcarOrden(id, estado, resultado) {
@@ -60,7 +78,14 @@ class NubeEnMemoria {
 
   /** Lo que haría la web pública: dejar una orden en el buzón (funciona aunque el local esté sin internet). */
   insertarOrden(tipo, payload) {
-    const orden = { id: this._siguienteId++, tipo, payload, estado: 'pendiente', resultado: null };
+    const orden = {
+      id: this._siguienteId++,
+      tipo,
+      payload,
+      estado: 'pendiente',
+      resultado: null,
+      creadaMs: this.relojMs
+    };
     this.ordenes.push(orden);
     // Realtime solo llega si el local tiene internet.
     if (this._alAviso && !this.sinInternet) this._alAviso();

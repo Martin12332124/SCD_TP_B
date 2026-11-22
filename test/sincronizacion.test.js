@@ -11,7 +11,11 @@ const {
   NotificadorConAviso,
   tareaSinSolapamiento
 } = require('../src/infraestructura/sincronizacion/sincronizador');
-const { AplicadorOrdenes, TIPOS_DE_ORDEN } = require('../src/presentacion/ordenes-nube');
+const {
+  AplicadorOrdenes,
+  TIPOS_DE_ORDEN,
+  VENCIMIENTO_ORDEN_MS
+} = require('../src/presentacion/ordenes-nube');
 const { NubeEnMemoria, consolaEspia, esperar } = require('./doble-nube');
 
 const PIZZA = { id: 1, cantidad: 2 };
@@ -365,6 +369,138 @@ describe('Corte de internet y reconexión', () => {
 
     expect(orden.estado).toBe('aplicada');
     expect(ctx.pedidos.obtener('Mesa 1').items[0].cantidad).toBe(2); // no 4
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Órdenes vencidas: una orden que esperó demasiado se rechaza, no se aplica.
+describe('Órdenes vencidas (ORDEN_VENCIDA)', () => {
+  let ctx;
+  beforeEach(() => {
+    ctx = crearAppConNube();
+  });
+  afterEach(() => cerrar(ctx));
+
+  /** Aplicador con un reloj monótono controlado por el test (ms). */
+  function aplicadorConReloj(reloj) {
+    return new AplicadorOrdenes({
+      servicios: {
+        pedidoService: ctx.pedidoService,
+        mesaService: ctx.mesaService,
+        mesaEstadoService: ctx.mesaEstadoService,
+        mesaConfiguracionService: ctx.mesaConfiguracionService
+      },
+      registro: new RegistroOrdenesSQLite(ctx.db),
+      relojMonotono: () => reloj.ahora
+    });
+  }
+
+  test('el vencimiento es menor que la espera de la web (10 s < 15 s): ver nube.js del frontend', () => {
+    expect(VENCIMIENTO_ORDEN_MS).toBe(10000);
+  });
+
+  test('una orden vieja se rechaza con ORDEN_VENCIDA y un motivo legible, sin ejecutarse', () => {
+    const aplicador = aplicadorConReloj({ ahora: 0 });
+    const { estado, resultado } = aplicador.aplicar({
+      id: 501,
+      tipo: 'abrir_mesa',
+      payload: { numero: 1 },
+      edadMs: 3 * 3600 * 1000, // 3 horas en el buzón
+      leidaEn: 0
+    });
+
+    expect(estado).toBe('rechazada');
+    expect(resultado).toMatchObject({ ok: false, tipo: 'ORDEN_VENCIDA' });
+    expect(resultado.error).toContain('10 s');
+    expect(resultado.error).toContain('sin aplicarse');
+    // No se ejecutó: la mesa sigue libre, y la decisión quedó en el registro.
+    expect(ctx.mesas.obtener('Mesa 1').estado).toBe('libre');
+    expect(new RegistroOrdenesSQLite(ctx.db).obtener(501).estado).toBe('rechazada');
+  });
+
+  test('en el límite exacto ya está vencida; un instante antes todavía se aplica', () => {
+    const aplicador = aplicadorConReloj({ ahora: 0 });
+    const justo = aplicador.aplicar({
+      id: 502,
+      tipo: 'abrir_mesa',
+      payload: { numero: 1 },
+      edadMs: VENCIMIENTO_ORDEN_MS,
+      leidaEn: 0
+    });
+    expect(justo.resultado.tipo).toBe('ORDEN_VENCIDA');
+
+    const antes = aplicador.aplicar({
+      id: 503,
+      tipo: 'abrir_mesa',
+      payload: { numero: 1 },
+      edadMs: VENCIMIENTO_ORDEN_MS - 1,
+      leidaEn: 0
+    });
+    expect(antes.estado).toBe('aplicada');
+  });
+
+  test('el tiempo que pasa entre leer el lote y aplicar la orden cuenta (reloj monótono)', () => {
+    const reloj = { ahora: 1000 };
+    const aplicador = aplicadorConReloj(reloj);
+    // Edad al leer: 4 s. Se aplica 7 s después (el aviso de la orden anterior tardó): 11 s.
+    reloj.ahora = 8000;
+    const { resultado } = aplicador.aplicar({
+      id: 504,
+      tipo: 'abrir_mesa',
+      payload: { numero: 1 },
+      edadMs: 4000,
+      leidaEn: 1000
+    });
+    expect(resultado.tipo).toBe('ORDEN_VENCIDA');
+    expect(ctx.mesas.obtener('Mesa 1').estado).toBe('libre');
+  });
+
+  test('una orden aplicada a tiempo cuyo aviso se perdió se reenvía como aplicada, no como vencida', () => {
+    const reloj = { ahora: 0 };
+    const aplicador = aplicadorConReloj(reloj);
+    const joven = { id: 505, tipo: 'abrir_mesa', payload: { numero: 1 }, edadMs: 100, leidaEn: 0 };
+    expect(aplicador.aplicar(joven).estado).toBe('aplicada');
+
+    // Reintento horas después (ya "vieja"): manda el registro, no el vencimiento.
+    const reintento = aplicador.aplicar({ ...joven, edadMs: 5 * 3600 * 1000 });
+    expect(reintento.estado).toBe('aplicada');
+    expect(reintento.resultado.ok).toBe(true);
+  });
+
+  test('sin edad medida por la base no se puede juzgar: no se rechaza', () => {
+    const aplicador = aplicadorConReloj({ ahora: 0 });
+    const r = aplicador.aplicar({ id: 506, tipo: 'abrir_mesa', payload: { numero: 1 } });
+    expect(r.estado).toBe('aplicada');
+  });
+
+  test('tras un corte largo, las órdenes que esperaron se rechazan en la nube y no cambian nada', async () => {
+    await ctx.sincronizador.iniciar();
+    ctx.nube.sinInternet = true;
+
+    // La web dejó dos órdenes antes de que el local se desconectara del todo...
+    const vieja1 = ctx.nube.insertarOrden('abrir_mesa', { numero: 2 });
+    const vieja2 = ctx.nube.insertarOrden('confirmar_pedido', { mesa: 'Mesa 2', items: [PIZZA] });
+    // ...y el local vuelve 2 horas después.
+    ctx.nube.avanzar(2 * 3600 * 1000);
+    const reciente = ctx.nube.insertarOrden('abrir_mesa', { numero: 3 });
+    ctx.nube.sinInternet = false;
+
+    await ctx.sincronizador.ciclo();
+    await esperar();
+
+    expect(vieja1.estado).toBe('rechazada');
+    expect(vieja1.resultado.tipo).toBe('ORDEN_VENCIDA');
+    expect(vieja2.estado).toBe('rechazada');
+    expect(vieja2.resultado.tipo).toBe('ORDEN_VENCIDA');
+    // La reciente sí se aplica, en su orden de id.
+    expect(reciente.estado).toBe('aplicada');
+    expect(ctx.mesas.obtener('Mesa 2').estado).toBe('libre');
+    expect(ctx.pedidos.obtener('Mesa 2')).toBeNull();
+    expect(ctx.mesas.obtener('Mesa 3').estado).toBe('ocupada');
+    // Cada rechazo deja una línea en la consola del servidor.
+    expect(
+      ctx.consola.mensajes.filter(([, m]) => String(m).includes('ORDEN_VENCIDA'))
+    ).toHaveLength(2);
   });
 });
 

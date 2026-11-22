@@ -89,17 +89,24 @@ describe('crearClienteSupabase', () => {
     expect(falso.llamadas).toEqual([['rpc', 'sincronizar_estado', { p_estado: foto }]]);
   });
 
-  test('obtenerOrdenesPendientes pide solo las pendientes, por id ascendente', async () => {
-    const ordenes = [{ id: 1, tipo: 'abrir_mesa', payload: { numero: 1 } }];
-    const falso = supabaseFalso({ respuesta: { data: ordenes, error: null } });
-    expect(await crear(falso).obtenerOrdenesPendientes()).toEqual(ordenes);
-    expect(falso.llamadas).toEqual([
-      ['from', 'ordenes_pendientes'],
-      ['select', 'id, tipo, payload'],
-      ['eq', 'estado', 'pendiente'],
-      ['order', 'id', { ascending: true }],
-      ['limit', 100]
+  test('obtenerOrdenesPendientes llama a la función de la base y agrega edadMs y leidaEn', async () => {
+    const filas = [
+      { id: 1, tipo: 'abrir_mesa', payload: { numero: 1 }, edad_ms: 2500 },
+      { id: 2, tipo: 'cerrar_mesa', payload: { numero: 1 }, edad_ms: '40' }
+    ];
+    const falso = supabaseFalso({ respuesta: { data: filas, error: null } });
+    const cliente = crearClienteSupabase({
+      url: 'https://ejemplo.supabase.co',
+      llaveSecreta: 'llave-de-prueba',
+      crearCliente: falso.crearCliente,
+      relojMonotono: () => 777
+    });
+    // La edad la mide la base (no el reloj de este PC); leidaEn es el reloj monótono local.
+    expect(await cliente.obtenerOrdenesPendientes()).toEqual([
+      { id: 1, tipo: 'abrir_mesa', payload: { numero: 1 }, edadMs: 2500, leidaEn: 777 },
+      { id: 2, tipo: 'cerrar_mesa', payload: { numero: 1 }, edadMs: 40, leidaEn: 777 }
     ]);
+    expect(falso.llamadas).toEqual([['rpc', 'ordenes_pendientes_con_edad']]);
   });
 
   test('obtenerOrdenesPendientes sin datos devuelve un arreglo vacío', async () => {
