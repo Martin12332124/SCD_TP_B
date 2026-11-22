@@ -3,14 +3,14 @@
 // Levanta el servidor real en un puerto libre y usa fetch (incluido en Node 20),
 // por lo que no requiere dependencias nuevas.
 
-const { crearApp } = require('../src/app');
+const { crearAppConSesion } = require('./sesion');
 const { SocketNotificador } = require('../src/infraestructura/notificador');
 
 let ctx;
 let base;
 
 beforeEach(async () => {
-  ctx = crearApp();
+  ctx = crearAppConSesion();
   await new Promise((resolve) => ctx.server.listen(0, resolve));
   base = `http://127.0.0.1:${ctx.server.address().port}`;
 });
@@ -20,7 +20,10 @@ afterEach(async () => {
 });
 
 async function llamar(metodo, ruta, cuerpo) {
-  const opciones = { method: metodo, headers: { 'Content-Type': 'application/json' } };
+  const opciones = {
+    method: metodo,
+    headers: ctx.cabeceras({ 'Content-Type': 'application/json' })
+  };
   if (cuerpo !== undefined) opciones.body = typeof cuerpo === 'string' ? cuerpo : JSON.stringify(cuerpo);
   const res = await fetch(base + ruta, opciones);
   return { status: res.status, json: await res.json() };

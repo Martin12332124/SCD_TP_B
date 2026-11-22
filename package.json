@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
+    "start": "node --env-file-if-exists=.env index.js",
     "test": "jest --verbose",
     "test:coverage": "jest --coverage --runInBand",
     "test:ci": "jest --ci --coverage --runInBand --watch=false",
@@ -56,8 +56,11 @@
   },
   "homepage": "https://github.com/Martin12332124/SCD_TP_B#readme",
   "dependencies": {
+    "@supabase/supabase-js": "^2.119.2",
     "better-sqlite3": "^12.11.1",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.7.5",
+    "jsonwebtoken": "^9.0.3",
     "socket.io": "^4.8.3"
   },
   "devDependencies": {

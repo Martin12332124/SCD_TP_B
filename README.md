@@ -56,6 +56,13 @@ Ver: [DominioEntidades.md](./DominioEntidades.md) — 10 entidades, diagrama ER 
 
 Ver: [Arquitectura.md](./Arquitectura.md) — estilo, diagrama, descomposición modular y decisiones de diseño (ADR).
 
+## Modelado y despliegue
+
+Los diagramas UML (casos de uso, clases, secuencia y componentes) y la guía de despliegue están en el repositorio del frontend, que es donde se entrega la documentación:
+
+- **Modelado (Entrega 3):** [docs/modelado/](https://github.com/Martin12332124/SCD_TP_F/tree/main/docs/modelado)
+- **Despliegue (modo local y modo nube, y plan de escalamiento):** [docs/despliegue.md](https://github.com/Martin12332124/SCD_TP_F/blob/main/docs/despliegue.md)
+
 ## Responsabilidades del Equipo
 
 ### Entregable 1
@@ -118,6 +125,27 @@ guarda nada (REF-09).
 
 Detalles (esquema, decisiones, cómo abrir la base con DB Browser for SQLite):
 [docs/persistencia-sqlite.md](docs/persistencia-sqlite.md).
+
+### Inicio de sesión
+
+Todo exige sesión: `POST /api/auth/login` entrega un token (JWT) que la API REST y Socket.IO
+piden en cada uso. El `.env` necesita `JWT_SECRET` (sin él el servidor no arranca) y, la primera
+vez, `USUARIOS_INICIALES`. Detalle en [docs/inicio-de-sesion.md](docs/inicio-de-sesion.md).
+
+### API gateway
+
+Toda la API (`/api/*` y Socket.IO) exige una API key de aplicación en la cabecera `x-api-key`, además
+del token de sesión. Además limita las peticiones (login: 5 intentos fallidos por minuto por IP; resto: 600 por minuto
+por llave) y registra cada acceso. El `.env` necesita `API_KEYS` (sin él el servidor no arranca).
+Detalle, rotación de llaves y pruebas con curl en [docs/api-gateway.md](docs/api-gateway.md).
+
+### Sincronización con la nube (opcional)
+
+Si `.env` trae `SUPABASE_URL` y `SUPABASE_SECRET_KEY` (ver `.env.example`), el servidor mantiene una
+réplica en Supabase y aplica las órdenes que deja la web pública. Sin esas variables funciona 100 %
+local, como siempre. El esquema de Supabase está en `supabase/esquema.sql`. Detalle, cómo
+configurarlo y cómo probar un corte de internet en
+[docs/sincronizacion-nube.md](docs/sincronizacion-nube.md).
 
 ### Administración de mesas
 
@@ -195,10 +223,12 @@ _Espera un par de segundos. Aparecerán muchas líneas de texto en la terminal y
 Una vez instalado todo, para prender el sistema haz lo siguiente:
 
 1. Asegúrate de estar dentro de la carpeta del proyecto en la terminal.
-2. Ejecuta este comando mágico:
+2. Copia `.env.example` como `.env` y completa al menos `JWT_SECRET`, `USUARIOS_INICIALES` y `API_KEYS`
+   (ver [docs/inicio-de-sesion.md](docs/inicio-de-sesion.md) y [docs/api-gateway.md](docs/api-gateway.md)).
+3. Ejecuta este comando (usa `npm start` y no `node index.js`: solo `npm start` lee el `.env`):
 
 ```bash
-node index.js
+npm start
 ```
 
 ### ¿Cómo sé si funcionó bien?
