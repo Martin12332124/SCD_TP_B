@@ -56,6 +56,13 @@ Ver: [DominioEntidades.md](./DominioEntidades.md) — 10 entidades, diagrama ER 
 
 Ver: [Arquitectura.md](./Arquitectura.md) — estilo, diagrama, descomposición modular y decisiones de diseño (ADR).
 
+## Modelado y despliegue
+
+Los diagramas UML (casos de uso, clases, secuencia y componentes) y la guía de despliegue están en el repositorio del frontend, que es donde se entrega la documentación:
+
+- **Modelado (Entrega 3):** [docs/modelado/](https://github.com/Martin12332124/SCD_TP_F/tree/main/docs/modelado)
+- **Despliegue (modo local y modo nube, y plan de escalamiento):** [docs/despliegue.md](https://github.com/Martin12332124/SCD_TP_F/blob/main/docs/despliegue.md)
+
 ## Responsabilidades del Equipo
 
 ### Entregable 1
