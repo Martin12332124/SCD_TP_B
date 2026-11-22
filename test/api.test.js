@@ -22,7 +22,7 @@ afterEach(async () => {
 async function llamar(metodo, ruta, cuerpo) {
   const opciones = {
     method: metodo,
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${ctx.token}` }
+    headers: ctx.cabeceras({ 'Content-Type': 'application/json' })
   };
   if (cuerpo !== undefined) opciones.body = typeof cuerpo === 'string' ? cuerpo : JSON.stringify(cuerpo);
   const res = await fetch(base + ruta, opciones);

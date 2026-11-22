@@ -246,7 +246,7 @@ describe('API REST con sesión', () => {
   const login = (cuerpo) =>
     fetch(`${base}/api/auth/login`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-api-key': ctx.llave },
       body: JSON.stringify(cuerpo)
     });
 
@@ -258,7 +258,7 @@ describe('API REST con sesión', () => {
 
     // El token recibido sirve para la API.
     const mesas = await fetch(`${base}/api/mesas`, {
-      headers: { Authorization: `Bearer ${cuerpo.token}` }
+      headers: ctx.cabeceras({ Authorization: `Bearer ${cuerpo.token}` })
     });
     expect(mesas.status).toBe(200);
 
@@ -272,17 +272,22 @@ describe('API REST con sesión', () => {
   test.each(['/api/mesas', '/api/mesas/1', '/api/mesas/1/pedido', '/api/menu-items'])(
     'GET %s sin token o con token inválido → 401 NO_AUTORIZADO',
     async (ruta) => {
-      const sin = await fetch(base + ruta);
+      const sin = await fetch(base + ruta, { headers: { 'x-api-key': ctx.llave } });
       expect(sin.status).toBe(401);
       expect(await sin.json()).toMatchObject({ ok: false, tipo: 'NO_AUTORIZADO' });
 
-      const malo = await fetch(base + ruta, { headers: { Authorization: 'Bearer basura' } });
+      const malo = await fetch(base + ruta, {
+        headers: { 'x-api-key': ctx.llave, Authorization: 'Bearer basura' }
+      });
       expect(malo.status).toBe(401);
     }
   );
 
   test('sin token tampoco se puede escribir: la mesa no se abre', async () => {
-    const r = await fetch(`${base}/api/mesas/1/abrir`, { method: 'POST' });
+    const r = await fetch(`${base}/api/mesas/1/abrir`, {
+      method: 'POST',
+      headers: { 'x-api-key': ctx.llave }
+    });
     expect(r.status).toBe(401);
     expect(ctx.mesas.obtener('Mesa 1').estado).toBe('libre');
   });
@@ -291,10 +296,12 @@ describe('API REST con sesión', () => {
     expect((await fetch(`${base}/`)).status).toBe(200);
   });
 
-  test('CORS permite la cabecera Authorization (si no, el navegador bloquea el login)', async () => {
+  test('CORS permite Authorization y x-api-key (si no, el navegador bloquea el login)', async () => {
+    // El preflight no lleva llave: lo responde el CORS, antes del gateway.
     const r = await fetch(`${base}/api/mesas`, { method: 'OPTIONS' });
     expect(r.status).toBe(204);
     expect(r.headers.get('access-control-allow-headers')).toMatch(/Authorization/);
+    expect(r.headers.get('access-control-allow-headers')).toMatch(/x-api-key/);
   });
 });
 
@@ -326,13 +333,14 @@ describe('Socket.IO con sesión', () => {
   }
 
   test('sin token o con token inválido la conexión se rechaza con NO_AUTORIZADO', async () => {
-    expect(await intentar(undefined)).toBe('NO_AUTORIZADO');
-    expect(await intentar({ token: 'basura' })).toBe('NO_AUTORIZADO');
+    const apiKey = ctx.llave;
+    expect(await intentar({ apiKey })).toBe('NO_AUTORIZADO');
+    expect(await intentar({ apiKey, token: 'basura' })).toBe('NO_AUTORIZADO');
     const otroSecreto = crearEmisorTokens('otro-secreto-de-prueba-con-32-caracteres!');
-    expect(await intentar({ token: otroSecreto.firmar('ana') })).toBe('NO_AUTORIZADO');
+    expect(await intentar({ apiKey, token: otroSecreto.firmar('ana') })).toBe('NO_AUTORIZADO');
   });
 
   test('con token válido se conecta', async () => {
-    expect(await intentar({ token: ctx.token })).toBe('conectado');
+    expect(await intentar({ apiKey: ctx.llave, token: ctx.token })).toBe('conectado');
   });
 });
