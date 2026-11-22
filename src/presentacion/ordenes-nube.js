@@ -6,6 +6,23 @@
 // al MISMO servicio de dominio que usaría el POS local. Las reglas (mesa libre, ítem
 // disponible, cantidad 1–99...) se validan ahí, una sola vez, en el servidor local.
 // Una orden que el dominio rechaza queda 'rechazada' con su motivo.
+//
+// Las órdenes VENCEN. Decisión de negocio: con el local desconectado la web ya no deja
+// órdenes (se lo avisa al usuario), pero si una llegara igual y esperara horas, aplicarla
+// después generaría conflictos (la mesa ya cambió, el cliente se fue...). Una orden que
+// esperó más de VENCIMIENTO_ORDEN_MS se rechaza con tipo ORDEN_VENCIDA y NO se aplica.
+//
+// Invariante con la web: su espera máxima (ESPERA_RESULTADO_MS en SCD_TP_F/src/servicios/
+// nube.js) debe ser MAYOR que este vencimiento, con margen. Así, cuando la web dice "el
+// cambio no se aplicó", el local ya no puede aplicar esa orden. Si cambias uno, cambia el otro.
+//
+// La edad la mide la base de Supabase (ver supabase/esquema.sql, ordenes_pendientes_con_edad),
+// no el reloj de este PC. Entre que se lee el lote y se aplica cada orden pasa tiempo (el
+// aviso de la anterior a Supabase puede tardar), y ese tiempo se mide con un reloj monótono
+// (solo avanza, no depende de la hora del sistema). Se suma a la edad leída: la estimación
+// nunca queda por debajo de la edad real, o sea, en caso de duda se rechaza.
+
+const VENCIMIENTO_ORDEN_MS = 10000;
 
 /**
  * Tipos de orden aceptados y a qué caso de uso llaman.
@@ -27,12 +44,22 @@ class AplicadorOrdenes {
    * @param {object} deps.servicios - pedidoService, mesaService, mesaEstadoService,
    *   mesaConfiguracionService (los mismos que usan REST y Socket.IO)
    * @param {object} deps.registro - RegistroOrdenesSQLite (obtener, guardar)
+   * @param {number} [deps.vencimientoMs] - edad máxima con la que se aplica una orden
+   * @param {() => number} [deps.relojMonotono] - ms que solo avanzan; mismo reloj que usa el
+   *   cliente de Supabase para `leidaEn`
    */
-  constructor({ servicios, registro }) {
+  constructor({
+    servicios,
+    registro,
+    vencimientoMs = VENCIMIENTO_ORDEN_MS,
+    relojMonotono = () => performance.now()
+  }) {
     if (!servicios) throw new Error('Dependencia requerida: servicios');
     if (!registro) throw new Error('Dependencia requerida: registro');
     this._servicios = servicios;
     this._registro = registro;
+    this._vencimientoMs = vencimientoMs;
+    this._relojMonotono = relojMonotono;
   }
 
   /**
@@ -49,12 +76,37 @@ class AplicadorOrdenes {
     if (previa) return { estado: previa.estado, resultado: previa.resultado };
 
     try {
+      // Después de consultar el registro: una orden aplicada a tiempo cuyo aviso se perdió
+      // debe reenviarse como aplicada, aunque al reintentar ya sea "vieja".
+      if (this._estaVencida(orden)) return this._rechazarVencida(orden);
       return this.aplicarYRegistrar(orden);
     } catch (error) {
       const resultado = { ok: false, tipo: 'ERROR_INTERNO', error: error.message };
       this._registro.guardar(orden.id, 'rechazada', resultado);
       return { estado: 'rechazada', resultado };
     }
+  }
+
+  /**
+   * Edad estimada ≥ vencimiento. Sin `edadMs` (no la midió la base) no se puede juzgar y no
+   * se rechaza: solo el cliente real de Supabase la entrega, y siempre lo hace.
+   */
+  _estaVencida({ edadMs, leidaEn }) {
+    if (!Number.isFinite(edadMs)) return false;
+    const transcurrido = Number.isFinite(leidaEn) ? this._relojMonotono() - leidaEn : 0;
+    return edadMs + transcurrido >= this._vencimientoMs;
+  }
+
+  _rechazarVencida(orden) {
+    const resultado = {
+      ok: false,
+      tipo: 'ORDEN_VENCIDA',
+      error:
+        `La orden esperó más de ${this._vencimientoMs / 1000} s al sistema del restaurante ` +
+        'y se descartó sin aplicarse. Repite la acción si todavía la necesitas.'
+    };
+    this._registro.guardar(orden.id, 'rechazada', resultado);
+    return { estado: 'rechazada', resultado };
   }
 
   /**
@@ -90,4 +142,4 @@ class AplicadorOrdenes {
   }
 }
 
-module.exports = { AplicadorOrdenes, TIPOS_DE_ORDEN };
+module.exports = { AplicadorOrdenes, TIPOS_DE_ORDEN, VENCIMIENTO_ORDEN_MS };

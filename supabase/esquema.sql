@@ -177,6 +177,30 @@ end;
 $$;
 
 -- ═══════════════════════════════════════════════════════════════════════════
+-- 3b. Órdenes pendientes con su edad (la usa solo el servidor local)
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Las órdenes vencen: una orden que esperó demasiado se rechaza en vez de aplicarse
+-- (aplicada horas después generaría conflictos). Para decidirlo, el local necesita la
+-- EDAD de la orden, y esa edad la mide la base, con su propio reloj (creada_en también lo
+-- puso la base): así no importa que el reloj del PC del restaurante esté adelantado o
+-- atrasado. clock_timestamp() (y no now()) da la hora real de la consulta.
+-- edad_ms es bigint con milisegundos: lo que se ve en el navegador es "hace cuánto".
+
+create or replace function public.ordenes_pendientes_con_edad()
+returns table (id bigint, tipo text, payload jsonb, edad_ms bigint)
+language sql
+security invoker
+set search_path = ''
+as $$
+  select o.id, o.tipo, o.payload,
+         (extract(epoch from (clock_timestamp() - o.creada_en)) * 1000)::bigint
+  from public.ordenes_pendientes o
+  where o.estado = 'pendiente'
+  order by o.id
+  limit 100;
+$$;
+
+-- ═══════════════════════════════════════════════════════════════════════════
 -- 4. Permisos (GRANT): qué puede tocar cada rol a través de la API
 -- ═══════════════════════════════════════════════════════════════════════════
 
@@ -188,6 +212,10 @@ revoke all on public.mesas, public.menu_items, public.pedidos, public.pedido_ite
 -- Sin este revoke, cualquier usuario de la web podría reescribir el espejo completo.
 revoke all on function public.sincronizar_estado(jsonb) from public, anon, authenticated;
 grant execute on function public.sincronizar_estado(jsonb) to service_role;
+-- Igual con la lista de órdenes pendientes: solo el servidor local (la web lee sus órdenes
+-- por la tabla, con RLS).
+revoke all on function public.ordenes_pendientes_con_edad() from public, anon, authenticated;
+grant execute on function public.ordenes_pendientes_con_edad() to service_role;
 
 -- Servidor local (llave secreta).
 grant select, insert, update, delete on public.mesas, public.menu_items, public.pedidos,

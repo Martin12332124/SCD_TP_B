@@ -34,12 +34,15 @@ function lanzarSiError({ data, error }, operacion) {
  * @param {string} opciones.llaveSecreta - SUPABASE_SECRET_KEY
  * @param {Function} [opciones.crearCliente] - createClient de supabase-js (inyectable en tests)
  * @param {number} [opciones.tiempoMaximoMs]
+ * @param {() => number} [opciones.relojMonotono] - ms que solo avanzan (no dependen de la hora
+ *   del PC); inyectable en los tests
  */
 function crearClienteSupabase({
   url,
   llaveSecreta,
   crearCliente = null,
-  tiempoMaximoMs = TIEMPO_MAXIMO_MS
+  tiempoMaximoMs = TIEMPO_MAXIMO_MS,
+  relojMonotono = () => performance.now()
 }) {
   if (!url || !llaveSecreta) throw new Error('Faltan SUPABASE_URL o SUPABASE_SECRET_KEY');
   // require aquí y no arriba: sin .env el servidor ni siquiera carga la librería.
@@ -59,18 +62,26 @@ function crearClienteSupabase({
       );
     },
 
-    /** Órdenes pendientes, de la más antigua a la más nueva (orden de llegada). */
+    /**
+     * Órdenes pendientes, de la más antigua a la más nueva (orden de llegada), cada una con
+     * su edad: `edadMs` la mide la base de Supabase (función ordenes_pendientes_con_edad)
+     * con su propio reloj, y `leidaEn` es el instante (reloj monótono) en que se pidió la
+     * lista. Con ambos, el aplicador estima la edad actual sin usar la hora de este PC
+     * (ver AplicadorOrdenes).
+     */
     async obtenerOrdenesPendientes() {
+      const leidaEn = relojMonotono();
       const data = lanzarSiError(
-        await supabase
-          .from('ordenes_pendientes')
-          .select('id, tipo, payload')
-          .eq('estado', 'pendiente')
-          .order('id', { ascending: true })
-          .limit(100),
+        await supabase.rpc('ordenes_pendientes_con_edad'),
         'leer ordenes_pendientes'
       );
-      return data || [];
+      return (data || []).map(({ id, tipo, payload, edad_ms: edadMs }) => ({
+        id,
+        tipo,
+        payload,
+        edadMs: Number(edadMs),
+        leidaEn
+      }));
     },
 
     /** Anota el resultado. Solo toca órdenes aún pendientes: marcar dos veces no cambia nada. */
