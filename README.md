@@ -2,30 +2,9 @@
 
 ## Descripción del sistema
 
-El Sistema de Pedidos para Restaurante (POS + KDS) resuelve el problema de coordinación entre la toma de pedidos en el salón y su preparación en cocina. En muchos restaurantes ese proceso depende de comandas en papel o de sistemas que no se actualizan en tiempo real, lo que provoca pedidos traspapelados, platos que se preparan mal o que llegan tarde a la mesa. El sistema conecta un Punto de Venta (POS), donde el mesero toma la comanda, con una Pantalla de Cocina (KDS), donde el personal de cocina la recibe y actualiza su estado a medida que avanza la preparación, todo sincronizado en tiempo real dentro de la red local del restaurante.
+El Sistema de Pedidos para Restaurante (POS + KDS) coordina la toma de pedidos en el salón con su preparación en cocina. El mesero gestiona las mesas y confirma pedidos desde el POS; cocina los recibe y actualiza su estado en el KDS. El sistema es híbrido: el servidor local con SQLite es la autoridad y sigue funcionando sin internet; cuando está conectado, sincroniza una réplica con Supabase para que la web pública consulte el estado y envíe órdenes al servidor local.
 
-Un elemento central del diseño es el paso de validación obligatoria de la comanda con el cliente antes de enviarla a cocina: el mesero confirma cada ítem, cantidad y modificador con el comensal antes de que el pedido salga hacia la cocina, para eliminar el error humano en el origen del proceso en vez de corregirlo después, cuando ya es más costoso hacerlo.
-
-El sistema sirve a cuatro roles dentro del restaurante: el Mesero, que toma los pedidos, gestiona las mesas y cierra las cuentas; el Cocinero, que recibe y prepara las comandas desde el KDS; el JefeDeCocina, que supervisa la cocina y el inventario de ingredientes; y el Administrador, que gestiona el catálogo de menú, los usuarios del sistema y el registro de ventas del local.
-
-## Historias de Usuario
-
-Todas las historias están registradas como GitHub Issues en el repositorio frontend.
-
-Las historias de usuario viven en el repositorio frontend: https://github.com/Martin12332124/SCD_TP_F/issues
-
-| ID    | Nombre                                  | Issue |
-| ----- | --------------------------------------- | ----- |
-| US-01 | Selector de variantes-bebida            | #22   |
-| US-02 | Descripción compacta del pedido         | #23   |
-| US-03 | Agregacion de notas a los pedidos       | #24   |
-| US-04 | Disponibilidad en los menus             | #32   |
-| US-05 | Posibilidad de cambio de clientes-mesas | #33   |
-| US-06 | Actualización de pedidos en la cocina   | #25   |
-| US-07 | Registrar precio al crear o editar      | #26   |
-| US-08 | Ver mapa de mesas                       | #27   |
-| US-09 | Abrir o cerrar una mesa                 | #28   |
-| US-10 | Limpieza al servir un pedido            | #30   |
+Los usuarios inician sesión para acceder al sistema. No hay permisos diferenciados por rol; las acciones disponibles corresponden a las funciones implementadas de mesas y pedidos.
 
 ## Requisitos Extrafuncionales
 
@@ -34,23 +13,6 @@ Ver: [ReqExtrafuncionales.md](./ReqExtrafuncionales.md) — 16 requisitos clasif
 ## Entidades del Dominio
 
 Ver: [DominioEntidades.md](./DominioEntidades.md) — 10 entidades, diagrama ER y máquina de estados del Pedido.
-
-## Mockups
-
-<!-- TODO: reemplazar por las rutas reales una vez subidas las imágenes -->
-
-| Mockup                   | Historia de usuario relacionada |
-| ------------------------ | ------------------------------- |
-| `docs/mockups/us-01.png` | US-01                           |
-| `docs/mockups/us-02.png` | US-02                           |
-| `docs/mockups/us-03.png` | US-03                           |
-| `docs/mockups/us-04.png` | US-04                           |
-| `docs/mockups/us-05.png` | US-05                           |
-| `docs/mockups/us-06.png` | US-06                           |
-| `docs/mockups/us-07.png` | US-07                           |
-| `docs/mockups/us-08.png` | US-08                           |
-| `docs/mockups/us-09.png` | US-09                           |
-| `docs/mockups/us-10.png` | US-10                           |
 
 ## Diseño Arquitectónico
 
@@ -89,20 +51,7 @@ Los diagramas UML (casos de uso, clases, secuencia y componentes) y la guía de 
 
 ## Servidor Backend
 
-Este proyecto es el cerebro (Backend) en tiempo real del Sistema de Pedidos para Restaurante (POS + KDS), desarrollado con Node.js, Express y Socket.io.
-Se usa Node.js con Express y Socket.io.
-A continuación, tienes los pasos exactos, detallados desde cero, para descargar, instalar y encender este servidor en CUALQUIER computadora
-
----
-## Hito 2 — Funcionalidades evaluadas
-
-| # | Funcionalidad | Historia | Backend (SCD_TP_B) | Frontend (SCD_TP_F) | Pruebas |
-|---|---|---|---|---|---|
-| 1 | Abrir y liberar mesa | US-09 | `src/dominio/mesa-estado.service.js`, `src/presentacion/mesas.router.js` | `src/DetalleMesa.jsx` | `test/mesa-estado.service.test.js`, `test/api.test.js` |
-| 2 | Mapa de mesas en tiempo real | US-08 | `GET /api/mesas`, evento `estado_mesas` en `src/app.js` | `src/MapaMesas.jsx`, `src/App.jsx` | `test/api.test.js`, `test/socket.test.js` |
-| 3 | Traslado de pedido entre mesas | US-05 | `src/dominio/mesa.service.js`, evento `trasladar_pedido` | formulario de traslado en `src/App.jsx` | `test/mesa.service.test.js`, `test/socket.test.js` |
-| 4 | Precio base de productos (crear/editar) | US-07 | `src/dominio/menu-item.service.js`, `src/presentacion/menu-items.router.js` | — | `test/menu-item.service.test.js`, `test/api.test.js` |
-| 5 | Toma de pedido, confirmación y disponibilidad | US-04 (parcial) | `src/dominio/pedido.service.js` (`confirmarPedido`), `PATCH /api/menu-items/:id` | `src/TomaPedido.jsx` | `test/pedido.service.test.js`, `test/socket.test.js` |
+Servidor Node.js con Express y Socket.IO para el POS + KDS. La base SQLite local es la fuente de verdad: el restaurante puede seguir operando sin internet. Al configurar Supabase, el backend sincroniza una réplica y procesa las órdenes que deja la web pública.
 
 ### Cómo ejecutar
 ``` bash 
@@ -142,8 +91,8 @@ Detalle, rotación de llaves y pruebas con curl en [docs/api-gateway.md](docs/ap
 ### Sincronización con la nube (opcional)
 
 Si `.env` trae `SUPABASE_URL` y `SUPABASE_SECRET_KEY` (ver `.env.example`), el servidor mantiene una
-réplica en Supabase y aplica las órdenes que deja la web pública. Sin esas variables funciona 100 %
-local, como siempre. El esquema de Supabase está en `supabase/esquema.sql`. Detalle, cómo
+réplica en Supabase y aplica las órdenes que deja la web pública. Sin esas variables sigue operando
+en modo local, pero no sincroniza con la web pública. El esquema de Supabase está en `supabase/esquema.sql`. Detalle, cómo
 configurarlo y cómo probar un corte de internet en
 [docs/sincronizacion-nube.md](docs/sincronizacion-nube.md).
 
