@@ -1,0 +1,39 @@
+name: CI - SCD_TP_B
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Verificar construcción
+        run: npm run build
+
+      - name: Analizar código (lint)
+        run: npm run lint
+
+      - name: Ejecutar pruebas con cobertura
+        run: npm run test:ci
+
+      - name: Guardar reporte de cobertura
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/

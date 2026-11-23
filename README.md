@@ -1,8 +1,158 @@
+# Sistema de Pedidos para Restaurante (POS + KDS)
+
+## Descripción del sistema
+
+El Sistema de Pedidos para Restaurante (POS + KDS) resuelve el problema de coordinación entre la toma de pedidos en el salón y su preparación en cocina. En muchos restaurantes ese proceso depende de comandas en papel o de sistemas que no se actualizan en tiempo real, lo que provoca pedidos traspapelados, platos que se preparan mal o que llegan tarde a la mesa. El sistema conecta un Punto de Venta (POS), donde el mesero toma la comanda, con una Pantalla de Cocina (KDS), donde el personal de cocina la recibe y actualiza su estado a medida que avanza la preparación, todo sincronizado en tiempo real dentro de la red local del restaurante.
+
+Un elemento central del diseño es el paso de validación obligatoria de la comanda con el cliente antes de enviarla a cocina: el mesero confirma cada ítem, cantidad y modificador con el comensal antes de que el pedido salga hacia la cocina, para eliminar el error humano en el origen del proceso en vez de corregirlo después, cuando ya es más costoso hacerlo.
+
+El sistema sirve a cuatro roles dentro del restaurante: el Mesero, que toma los pedidos, gestiona las mesas y cierra las cuentas; el Cocinero, que recibe y prepara las comandas desde el KDS; el JefeDeCocina, que supervisa la cocina y el inventario de ingredientes; y el Administrador, que gestiona el catálogo de menú, los usuarios del sistema y el registro de ventas del local.
+
+## Historias de Usuario
+
+Todas las historias están registradas como GitHub Issues en el repositorio frontend.
+
+Las historias de usuario viven en el repositorio frontend: https://github.com/Martin12332124/SCD_TP_F/issues
+
+| ID    | Nombre                                  | Issue |
+| ----- | --------------------------------------- | ----- |
+| US-01 | Selector de variantes-bebida            | #22   |
+| US-02 | Descripción compacta del pedido         | #23   |
+| US-03 | Agregacion de notas a los pedidos       | #24   |
+| US-04 | Disponibilidad en los menus             | #32   |
+| US-05 | Posibilidad de cambio de clientes-mesas | #33   |
+| US-06 | Actualización de pedidos en la cocina   | #25   |
+| US-07 | Registrar precio al crear o editar      | #26   |
+| US-08 | Ver mapa de mesas                       | #27   |
+| US-09 | Abrir o cerrar una mesa                 | #28   |
+| US-10 | Limpieza al servir un pedido            | #30   |
+
+## Requisitos Extrafuncionales
+
+Ver: [ReqExtrafuncionales.md](./ReqExtrafuncionales.md) — 16 requisitos clasificados, 5 de prioridad Alta.
+
+## Entidades del Dominio
+
+Ver: [DominioEntidades.md](./DominioEntidades.md) — 10 entidades, diagrama ER y máquina de estados del Pedido.
+
+## Mockups
+
+<!-- TODO: reemplazar por las rutas reales una vez subidas las imágenes -->
+
+| Mockup                   | Historia de usuario relacionada |
+| ------------------------ | ------------------------------- |
+| `docs/mockups/us-01.png` | US-01                           |
+| `docs/mockups/us-02.png` | US-02                           |
+| `docs/mockups/us-03.png` | US-03                           |
+| `docs/mockups/us-04.png` | US-04                           |
+| `docs/mockups/us-05.png` | US-05                           |
+| `docs/mockups/us-06.png` | US-06                           |
+| `docs/mockups/us-07.png` | US-07                           |
+| `docs/mockups/us-08.png` | US-08                           |
+| `docs/mockups/us-09.png` | US-09                           |
+| `docs/mockups/us-10.png` | US-10                           |
+
+## Diseño Arquitectónico
+
+Ver: [Arquitectura.md](./Arquitectura.md) — estilo, diagrama, descomposición modular y decisiones de diseño (ADR).
+
+## Modelado y despliegue
+
+Los diagramas UML (casos de uso, clases, secuencia y componentes) y la guía de despliegue están en el repositorio del frontend, que es donde se entrega la documentación:
+
+- **Modelado (Entrega 3):** [docs/modelado/](https://github.com/Martin12332124/SCD_TP_F/tree/main/docs/modelado)
+- **Despliegue (modo local y modo nube, y plan de escalamiento):** [docs/despliegue.md](https://github.com/Martin12332124/SCD_TP_F/blob/main/docs/despliegue.md)
+
+## Responsabilidades del Equipo
+
+### Entregable 1
+
+| Integrante          | Rol                                | Ítems de la rúbrica a cargo                                |
+| ------------------- | ---------------------------------- | ---------------------------------------------------------- |
+| Martín Saldívar     | Desarrollador                      | 2.1 Diseño Arquitectónico                                  |
+| Martín Carvallo     | Desarrollador y Historias          | 1.1 Historias de Usuario, 2.4 Entidades del dominio        |
+| Claudia Medina      | Diseñadora y concepto del sistema. | 2.3 Mockups, 2.2 Diagrama de Arquitectura                  |
+| Francisca Hernández | Historias y Análisis de requisitos | 1.1 Historias de Usuario                                   |
+| Diego Urbano        | Coordinador                        | 1.2 Requisitos Extrafuncionales, 2.1 Diseño Arquitectónico |
+
+### Entregable 2
+
+| Integrante          | Rol                                          | Ítems de la rúbrica a cargo                                                |
+| ------------------- | -------------------------------------------- | -------------------------------------------------------------------------- |
+| Francisca Hernández | Analista de Requisitos (Refinamiento con IA) | 1.1 Mejora de Historias de Usuario con Clarita Review                      |
+| Claudia Medina      | Gestión de Requisitos y Control de Cambios   | 1.1 Mejora de Historias de Usuario con Clarita Review (cambios realizados) |
+| Martín Carvallo     | Desarrollador Backend (APIs)                 | 2.1 Desarrollo de una HU en backend (APIs)                                 |
+| Diego Urbano        | Coordinador y Desarrollador Backend (APIs)   | 2.1 Desarrollo de una HU en backend (APIs)                                 |
+| Martín Saldívar     | Ingeniero de Pruebas / QA (Thunder Client)   | 4.1 Casos de prueba para las APIs (Thunder Client)                         |
+
+## Instalación y ejecución
+
 ## Servidor Backend
 
-Este proyecto es el cerebro (Backend) en tiempo real para el control de congestión, desarrollado con Node.js, Express y Socket.io.
+Este proyecto es el cerebro (Backend) en tiempo real del Sistema de Pedidos para Restaurante (POS + KDS), desarrollado con Node.js, Express y Socket.io.
 Se usa Node.js con Express y Socket.io.
-A continuación, tienes los pasos exactos, detallados desde cero, para descargar, instalar y encender este servidor en CUALQUIER computadora 
+A continuación, tienes los pasos exactos, detallados desde cero, para descargar, instalar y encender este servidor en CUALQUIER computadora
+
+---
+## Hito 2 — Funcionalidades evaluadas
+
+| # | Funcionalidad | Historia | Backend (SCD_TP_B) | Frontend (SCD_TP_F) | Pruebas |
+|---|---|---|---|---|---|
+| 1 | Abrir y liberar mesa | US-09 | `src/dominio/mesa-estado.service.js`, `src/presentacion/mesas.router.js` | `src/DetalleMesa.jsx` | `test/mesa-estado.service.test.js`, `test/api.test.js` |
+| 2 | Mapa de mesas en tiempo real | US-08 | `GET /api/mesas`, evento `estado_mesas` en `src/app.js` | `src/MapaMesas.jsx`, `src/App.jsx` | `test/api.test.js`, `test/socket.test.js` |
+| 3 | Traslado de pedido entre mesas | US-05 | `src/dominio/mesa.service.js`, evento `trasladar_pedido` | formulario de traslado en `src/App.jsx` | `test/mesa.service.test.js`, `test/socket.test.js` |
+| 4 | Precio base de productos (crear/editar) | US-07 | `src/dominio/menu-item.service.js`, `src/presentacion/menu-items.router.js` | — | `test/menu-item.service.test.js`, `test/api.test.js` |
+| 5 | Toma de pedido, confirmación y disponibilidad | US-04 (parcial) | `src/dominio/pedido.service.js` (`confirmarPedido`), `PATCH /api/menu-items/:id` | `src/TomaPedido.jsx` | `test/pedido.service.test.js`, `test/socket.test.js` |
+
+### Cómo ejecutar
+``` bash 
+npm ci
+npm start                 # http://localhost:3000
+npm run lint
+npm run build
+npm run test:coverage     # pruebas + cobertura (carpeta coverage/)
+
+```
+
+### Persistencia de datos
+
+Mesas, menú y pedidos se guardan en una base SQLite local (`better-sqlite3`, ADR-03), así que
+sobreviven a un reinicio del servidor y no necesitan internet. Por defecto el archivo queda en
+`data/restaurante.db` (se crea solo al hacer `npm start`); para usar otro archivo:
+`DB_PATH=/ruta/otra.db npm start`. Para empezar de cero en desarrollo, apaga el servidor y borra
+la carpeta `data/`. Cada operación se guarda en una transacción: o se guarda completa o no se
+guarda nada (REF-09).
+
+Detalles (esquema, decisiones, cómo abrir la base con DB Browser for SQLite):
+[docs/persistencia-sqlite.md](docs/persistencia-sqlite.md).
+
+### Inicio de sesión
+
+Todo exige sesión: `POST /api/auth/login` entrega un token (JWT) que la API REST y Socket.IO
+piden en cada uso. El `.env` necesita `JWT_SECRET` (sin él el servidor no arranca) y, la primera
+vez, `USUARIOS_INICIALES`. Detalle en [docs/inicio-de-sesion.md](docs/inicio-de-sesion.md).
+
+### API gateway
+
+Toda la API (`/api/*` y Socket.IO) exige una API key de aplicación en la cabecera `x-api-key`, además
+del token de sesión. Además limita las peticiones (login: 5 intentos fallidos por minuto por IP; resto: 600 por minuto
+por llave) y registra cada acceso. El `.env` necesita `API_KEYS` (sin él el servidor no arranca).
+Detalle, rotación de llaves y pruebas con curl en [docs/api-gateway.md](docs/api-gateway.md).
+
+### Sincronización con la nube (opcional)
+
+Si `.env` trae `SUPABASE_URL` y `SUPABASE_SECRET_KEY` (ver `.env.example`), el servidor mantiene una
+réplica en Supabase y aplica las órdenes que deja la web pública. Sin esas variables funciona 100 %
+local, como siempre. El esquema de Supabase está en `supabase/esquema.sql`. Detalle, cómo
+configurarlo y cómo probar un corte de internet en
+[docs/sincronizacion-nube.md](docs/sincronizacion-nube.md).
+
+### Administración de mesas
+
+La cantidad de mesas ya no es fija: se agregan con `POST /api/mesas` y se quitan con
+`DELETE /api/mesas/:numero` (solo mesas libres y sin pedido, y nunca la última). Las 10 mesas
+iniciales se crean únicamente la primera vez. Además, un pedido marcado "Listo 🍽️" se conserva
+con la mesa ocupada hasta liberarla. Detalles: [docs/administracion-mesas.md](docs/administracion-mesas.md).
 
 ---
 
@@ -22,34 +172,49 @@ Antes de hacer nada, la computadora externa necesita tener instalado **Node.js**
 Sigue estos pasos en orden estricto. No te saltes ninguno.
 
 ### Paso 1: Abrir la Terminal
-* En **Windows**: Presiona la tecla `Windows`, escribe **PowerShell** y ábrelo.
-* En **Mac**: Presiona `Cmd + Espacio`, escribe **Terminal** y ábrela.
+
+- En **Windows**: Presiona la tecla `Windows`, escribe **PowerShell** y ábrelo.
+- En **Mac**: Presiona `Cmd + Espacio`, escribe **Terminal** y ábrela.
 
 ### Paso 2: Ir a la carpeta donde quieres guardar el proyecto
+
 Escribe el siguiente comando para moverte a la carpeta de descargas de la computadora y presiona `Enter`:
+
 ```bash
 cd Downloads
 ```
 
 ### Paso 3: Descargar el código desde GitHub
+
 Copia este comando exacto, pégalo en la terminal y presiona `Enter`:
+
 ```bash
 git clone https://github.com/Martin12332124/SCD_TP_B.git
 ```
-*(Esto creará automáticamente una carpeta llamada `SCD_TP_B` en las descargas).*
+
+_(Esto creará automáticamente una carpeta llamada `SCD_TP_B` en las descargas)._
 
 ### Paso 4: Entrar a la carpeta del proyecto
+
 Escribe este comando para meterte dentro de la carpeta que acabas de descargar y presiona `Enter`:
+
 ```bash
 cd SCD_TP_B
 ```
 
 ### Paso 5: Instalar las librerías del sistema
+
 Las librerías del proyecto NO vienen incluidas en la descarga porque son pesadas. Tienes que instalarlas ejecutando este comando exacto y presionando `Enter`:
+
 ```bash
 npm install
 ```
-*Espera un par de segundos. Aparecerán muchas líneas de texto en la terminal y una barra de carga. Sabrás que terminó cuando la terminal te deje escribir comandos otra vez.*
+
+```bash
+npm run format
+```
+
+_Espera un par de segundos. Aparecerán muchas líneas de texto en la terminal y una barra de carga. Sabrás que terminó cuando la terminal te deje escribir comandos otra vez._
 
 ---
 
@@ -58,13 +223,18 @@ npm install
 Una vez instalado todo, para prender el sistema haz lo siguiente:
 
 1. Asegúrate de estar dentro de la carpeta del proyecto en la terminal.
-2. Ejecuta este comando mágico:
+2. Copia `.env.example` como `.env` y completa al menos `JWT_SECRET`, `USUARIOS_INICIALES` y `API_KEYS`
+   (ver [docs/inicio-de-sesion.md](docs/inicio-de-sesion.md) y [docs/api-gateway.md](docs/api-gateway.md)).
+3. Ejecuta este comando (usa `npm start` y no `node index.js`: solo `npm start` lee el `.env`):
+
 ```bash
-node index.js
+npm start
 ```
 
 ### ¿Cómo sé si funcionó bien?
+
 Si todo tuvo éxito, verás estas líneas exactas pintadas en tu terminal:
+
 ```text
 =============================================
  Servidor Backend corriendo en el puerto 3000
@@ -72,17 +242,21 @@ Si todo tuvo éxito, verás estas líneas exactas pintadas en tu terminal:
 ```
 
 ### Prueba Final en el Navegador
+
 Para comprobar con tus propios ojos que la computadora externa está respondiendo:
+
 1. Abre Google Chrome o cualquier navegador web.
 2. En la barra de arriba donde escribes las páginas web, escribe exactamente esto:
    `http://localhost:3000`
 3. Presiona `Enter`.
-4. En la pantalla blanca debe aparecer el texto: **"Servidor del Sistema de Congestión operativo."**
+4. En la pantalla blanca debe aparecer el texto: **"Servidor del Sistema de Pedidos para Restaurante operativo."**
 
 ---
 
 ## CÓMO APAGAR EL SERVIDOR
+
 Cuando termines de usarlo y quieras apagar el sistema:
+
 1. Haz clic en la ventana de la terminal negra donde está corriendo el servidor.
 2. Presiona las teclas **`Ctrl + C`** al mismo tiempo.
 3. El servidor se detendrá inmediatamente.

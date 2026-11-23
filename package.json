@@ -1,25 +1,77 @@
 {
-  "name": "scd_tp_f",
+  "name": "scd_tp_b",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node --env-file-if-exists=.env index.js",
+    "test": "jest --verbose",
+    "test:coverage": "jest --coverage --runInBand",
+    "test:ci": "jest --ci --coverage --runInBand --watch=false",
+    "evidencia": "node scripts/evidencia.js",
+    "format": "prettier --write \"**/*.{js,json,md}\" --ignore-path .gitignore",
+    "lint": "eslint .",
+    "build": "node --check index.js"
+  },
+  "jest": {
+    "collectCoverageFrom": [
+      "src/**/*.js",
+      "!src/**/*.test.js"
+    ],
+    "coverageReporters": [
+      "text",
+      "text-summary",
+      "lcov",
+      "html"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "statements": 70,
+        "lines": 70,
+        "functions": 70,
+        "branches": 60
+      },
+      "./src/dominio/mesa-estado.service.js": {
+        "lines": 80,
+        "functions": 80,
+        "branches": 70
+      },
+      "./src/dominio/menu-item.service.js": {
+        "lines": 80,
+        "functions": 80,
+        "branches": 70
+      }
+    }
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Martin12332124/SCD_TP_F.git"
+    "url": "git+https://github.com/Martin12332124/SCD_TP_B.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "bugs": {
-    "url": "https://github.com/Martin12332124/SCD_TP_F/issues"
+    "url": "https://github.com/Martin12332124/SCD_TP_B/issues"
   },
-  "homepage": "https://github.com/Martin12332124/SCD_TP_F#readme",
+  "homepage": "https://github.com/Martin12332124/SCD_TP_B#readme",
   "dependencies": {
+    "@supabase/supabase-js": "^2.119.2",
+    "better-sqlite3": "^12.11.1",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.7.5",
+    "jsonwebtoken": "^9.0.3",
     "socket.io": "^4.8.3"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.13.0",
+    "globals": "^17.13.0",
+    "jest": "^30.5.2",
+    "prettier": "^3.9.6",
+    "socket.io-client": "^4.8.4"
+  },
+  "allowScripts": {
+    "better-sqlite3": true
   }
 }
