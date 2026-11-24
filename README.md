@@ -260,3 +260,47 @@ Cuando termines de usarlo y quieras apagar el sistema:
 1. Haz clic en la ventana de la terminal negra donde está corriendo el servidor.
 2. Presiona las teclas **`Ctrl + C`** al mismo tiempo.
 3. El servidor se detendrá inmediatamente.
+
+---
+
+## Cómo extender el sistema
+
+Esta sección explica dónde tocar el código para las extensiones más comunes, sin romper lo que ya funciona.
+
+### Agregar una nueva ruta HTTP
+
+1. Crear `src/presentacion/mi-funcionalidad.router.js` con el patrón de `mesas.router.js`:
+   - Recibe las dependencias por parámetro (`crearMiFuncionalidadRouter(deps)`), sin importarlas directamente.
+   - Mapea cada tipo de error del servicio a su código HTTP (`HTTP_STATUS`).
+2. Montar el router en `src/app.js`:
+   ```js
+   const { crearMiFuncionalidadRouter } = require('./presentacion/mi-funcionalidad.router');
+   app.use('/api', crearMiFuncionalidadRouter({ miServicio }));
+   ```
+3. Escribir al menos un test en `test/api.test.js` que levante `crearAppConSesion()` y llame a la ruta nueva.
+
+### Agregar un nuevo evento Socket.IO
+
+En `src/presentacion/socket.handlers.js`, dentro de `registrarHandlersSocket`, agregar:
+
+```js
+socket.on('mi_evento', (datos) => {
+  responderSeguro(socket, {
+    eventoRespuesta: 'respuesta_mi_evento',
+    operacion: () => miServicio.miOperacion(datos),
+    alExito: (r) => console.log(`✅ MI_EVENTO OK: ${JSON.stringify(r)}`)
+  });
+});
+```
+
+Luego probar el evento en `test/socket.test.js` con el cliente de `socket.io-client`.
+
+### Agregar un nuevo servicio de dominio
+
+1. Crear `src/dominio/mi-servicio.js`. El constructor recibe las dependencias explícitas (repositorios, notificador); no hace `require` de ellas.
+2. Instanciar el servicio en `crearApp()` (`src/app.js`) e inyectar los repositorios que necesita.
+3. Escribir `test/mi-servicio.test.js` con repositorios en memoria (`PedidosEnMemoria`, `MesasEnMemoria`) y un `NotificadorEspia` (ver `test/doubles.js`).
+
+### Cambiar el esquema de la base de datos
+
+Editar `src/infraestructura/sqlite/esquema.sql`. Si la tabla ya existe en producción, agregar la migración como un bloque `ALTER TABLE … ADD COLUMN … IF NOT EXISTS` antes del `CREATE TABLE … IF NOT EXISTS` correspondiente.
