@@ -158,7 +158,15 @@ con la mesa ocupada hasta liberarla. Detalles: [docs/administracion-mesas.md](do
 
 ## REQUISITOS PREVIOS (Hacer esto antes de tocar el proyecto)
 
-Antes de hacer nada, la computadora externa necesita tener instalado **Node.js**. Si no lo tiene, no funcionará nada.
+Antes de hacer nada, la computadora externa necesita tener instalado **Node.js 22 LTS** (o superior compatible). Si no lo tiene, no funcionará nada.
+
+> **Versión empaquetada (`v3.0.0`):** para probar la entrega exacta del Hito 3 tras clonar, ejecuta `git checkout v3.0.0`. Ver notas de cambio en [CHANGELOG.md](CHANGELOG.md) y el informe completo del Hito 3 en el repositorio frontend (`docs/guia-unidad-3.md`).
+
+### Problemas frecuentes
+
+- **El servidor no arranca por variables faltantes:** copia `.env.example` a `.env` y define `JWT_SECRET`, `USUARIOS_INICIALES` y `API_KEYS` (usa `npm start`, no `node index.js`).
+- **Puerto 3000 ocupado (`EADDRINUSE`):** cierra la instancia previa o define `PORT=3001` en `.env`.
+- **Error de compilación nativa de `better-sqlite3`:** ejecuta `npm ci` con Node.js 22 LTS.
 
 1. Entra a la página oficial: https://nodejs.org
 2. Descarga la versión que dice **LTS** (es la caja verde de la izquierda).
