@@ -2,7 +2,7 @@
 // Tests unitarios y de contrato para Operación 2: Validación defensiva del número de mesa en el Backend
 // Complementa la validación del frontend asegurando la segunda barrera en PedidoService.
 
-const { PedidoService } = require('../src/dominio/pedido.service');
+const { PedidoService } = require('../src/modules/pedidos');
 const { PedidosEnMemoria, MesasEnMemoria } = require('../src/infraestructura/repositorios');
 const { NotificadorEspia } = require('./doubles');
 

@@ -4,7 +4,8 @@
 
 const { MesasConEstadoPedido } = require('../src/infraestructura/mesas-con-pedido');
 const { PedidosEnMemoria, MesasEnMemoria } = require('../src/infraestructura/repositorios');
-const { PedidosSQLite, MesasSQLite } = require('../src/infraestructura/sqlite/repositorios-sqlite');
+const { MesasSQLite } = require('../src/infraestructura/sqlite/repositorios-sqlite');
+const { PedidosSQLite } = require('../src/modules/pedidos');
 const { abrirBaseDeDatos } = require('../src/infraestructura/sqlite/conexion');
 
 let db;

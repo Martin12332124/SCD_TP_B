@@ -9,12 +9,11 @@ const {
   MenuItemsEnMemoria
 } = require('../src/infraestructura/repositorios');
 const {
-  PedidosSQLite,
   MesasSQLite,
   MenuItemsSQLite
 } = require('../src/infraestructura/sqlite/repositorios-sqlite');
+const { PedidosSQLite, ESTADOS_VALIDOS } = require('../src/modules/pedidos');
 const { abrirBaseDeDatos } = require('../src/infraestructura/sqlite/conexion');
-const { ESTADOS_VALIDOS } = require('../src/dominio/pedido.service');
 
 const SEMILLA = [
   { id: 1, nombre: 'Pizza Margarita', precioBase: 8500, disponible: true },

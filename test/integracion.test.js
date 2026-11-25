@@ -2,7 +2,7 @@
 // Tests de integración: PedidoService + repositorios reales + notificador espía.
 // Verifican el flujo completo sin Socket.io real.
 
-const { PedidoService } = require('../src/dominio/pedido.service');
+const { PedidoService } = require('../src/modules/pedidos');
 const { PedidosEnMemoria, MesasEnMemoria } = require('../src/infraestructura/repositorios');
 const { NotificadorEspia } = require('./doubles');
 

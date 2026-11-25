@@ -7,7 +7,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 
-const { PedidoService } = require('./dominio/pedido.service');
+const { PedidoService, PedidosSQLite } = require('./modules/pedidos');
 const { MesaService } = require('./dominio/mesa.service');
 const { MesaEstadoService } = require('./dominio/mesa-estado.service');
 const { MesaConfiguracionService } = require('./dominio/mesa-configuracion.service');
@@ -24,7 +24,6 @@ const { exigirToken, exigirTokenSocket } = require('./presentacion/autenticacion
 const { crearGateway } = require('./presentacion/gateway');
 const { abrirBaseDeDatos } = require('./infraestructura/sqlite/conexion');
 const {
-  PedidosSQLite,
   MesasSQLite,
   MenuItemsSQLite
 } = require('./infraestructura/sqlite/repositorios-sqlite');

@@ -1,7 +1,7 @@
 // test/pedido.service.test.js
 // Tests unitarios para PedidoService.actualizarEstado
 
-const { PedidoService } = require('../src/dominio/pedido.service');
+const { PedidoService } = require('../src/modules/pedidos');
 const { PedidosEnMemoria, MesasEnMemoria } = require('../src/infraestructura/repositorios');
 const { NotificadorEspia, PedidosQueFallan, NotificadorCaido } = require('./doubles');
 

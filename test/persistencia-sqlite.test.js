@@ -8,15 +8,14 @@ const os = require('os');
 const path = require('path');
 const { abrirBaseDeDatos, RUTA_POR_DEFECTO } = require('../src/infraestructura/sqlite/conexion');
 const {
-  PedidosSQLite,
   MesasSQLite,
   MenuItemsSQLite
 } = require('../src/infraestructura/sqlite/repositorios-sqlite');
+const { PedidosSQLite, PedidoService } = require('../src/modules/pedidos');
 const {
   NotificadorTransaccional,
   envolverEnTransaccion
 } = require('../src/infraestructura/sqlite/transacciones');
-const { PedidoService } = require('../src/dominio/pedido.service');
 const { MesaService, DependenciaError } = require('../src/dominio/mesa.service');
 const { NotificadorEspia } = require('./doubles');
 

@@ -5,7 +5,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { PedidoService } = require('../src/dominio/pedido.service');
+const { PedidoService } = require('../src/modules/pedidos');
 const { PedidosEnMemoria, MesasEnMemoria } = require('../src/infraestructura/repositorios');
 const { NotificadorEspia } = require('../test/doubles');
 

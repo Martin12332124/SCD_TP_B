@@ -102,7 +102,7 @@ A continuación, tienes los pasos exactos, detallados desde cero, para descargar
 | 2 | Mapa de mesas en tiempo real | US-08 | `GET /api/mesas`, evento `estado_mesas` en `src/app.js` | `src/MapaMesas.jsx`, `src/App.jsx` | `test/api.test.js`, `test/socket.test.js` |
 | 3 | Traslado de pedido entre mesas | US-05 | `src/dominio/mesa.service.js`, evento `trasladar_pedido` | formulario de traslado en `src/App.jsx` | `test/mesa.service.test.js`, `test/socket.test.js` |
 | 4 | Precio base de productos (crear/editar) | US-07 | `src/dominio/menu-item.service.js`, `src/presentacion/menu-items.router.js` | — | `test/menu-item.service.test.js`, `test/api.test.js` |
-| 5 | Toma de pedido, confirmación y disponibilidad | US-04 (parcial) | `src/dominio/pedido.service.js` (`confirmarPedido`), `PATCH /api/menu-items/:id` | `src/TomaPedido.jsx` | `test/pedido.service.test.js`, `test/socket.test.js` |
+| 5 | Toma de pedido, confirmación y disponibilidad | US-04 (parcial) | `src/modules/pedidos/pedido.service.js` (`confirmarPedido`), `PATCH /api/menu-items/:id` | `src/modules/pedidos/components/TomaPedido.jsx` | `test/pedido.service.test.js`, `test/socket.test.js` |
 
 ### Cómo ejecutar
 ``` bash 
@@ -158,7 +158,15 @@ con la mesa ocupada hasta liberarla. Detalles: [docs/administracion-mesas.md](do
 
 ## REQUISITOS PREVIOS (Hacer esto antes de tocar el proyecto)
 
-Antes de hacer nada, la computadora externa necesita tener instalado **Node.js**. Si no lo tiene, no funcionará nada.
+Antes de hacer nada, la computadora externa necesita tener instalado **Node.js 22 LTS** (o superior compatible). Si no lo tiene, no funcionará nada.
+
+> **Versión empaquetada (`v3.0.0`):** para probar la entrega exacta del Hito 3 tras clonar, ejecuta `git checkout v3.0.0`. Ver notas de cambio en [CHANGELOG.md](CHANGELOG.md) y el informe completo del Hito 3 en el repositorio frontend (`docs/guia-unidad-3.md`).
+
+### Problemas frecuentes
+
+- **El servidor no arranca por variables faltantes:** copia `.env.example` a `.env` y define `JWT_SECRET`, `USUARIOS_INICIALES` y `API_KEYS` (usa `npm start`, no `node index.js`).
+- **Puerto 3000 ocupado (`EADDRINUSE`):** cierra la instancia previa o define `PORT=3001` en `.env`.
+- **Error de compilación nativa de `better-sqlite3`:** ejecuta `npm ci` con Node.js 22 LTS.
 
 1. Entra a la página oficial: https://nodejs.org
 2. Descarga la versión que dice **LTS** (es la caja verde de la izquierda).
@@ -260,3 +268,53 @@ Cuando termines de usarlo y quieras apagar el sistema:
 1. Haz clic en la ventana de la terminal negra donde está corriendo el servidor.
 2. Presiona las teclas **`Ctrl + C`** al mismo tiempo.
 3. El servidor se detendrá inmediatamente.
+
+---
+
+## Cómo extender el sistema
+
+Esta sección explica dónde tocar el código para las extensiones más comunes, sin romper lo que ya funciona.
+
+### Agregar una nueva ruta HTTP
+
+1. Crear `src/modules/mi-funcionalidad/mi-funcionalidad.router.js` junto al servicio de la función:
+   - Recibe las dependencias por parámetro (`crearMiFuncionalidadRouter(deps)`), sin importarlas directamente.
+   - Mapea cada tipo de error del servicio a su código HTTP (`HTTP_STATUS`).
+2. Exportar el router desde `src/modules/mi-funcionalidad/index.js` y montarlo en `src/app.js`:
+   ```js
+   const { crearMiFuncionalidadRouter } = require('./modules/mi-funcionalidad');
+   app.use('/api', crearMiFuncionalidadRouter({ miServicio }));
+   ```
+3. Escribir al menos un test en `test/api.test.js` que levante `crearAppConSesion()` y llame a la ruta nueva.
+
+### Agregar un nuevo evento Socket.IO
+
+Para un evento propio de una funcionalidad, agrégalo en el módulo correspondiente (por ejemplo,
+`src/modules/pedidos/pedido.socket.handlers.js`) y registra la función desde
+`src/presentacion/socket.handlers.js`. Mantén en presentación solo la conexión y las operaciones
+transversales; usa `responderSeguro` para conservar el formato común de respuestas y errores.
+
+Para una funcionalidad nueva, crea `src/modules/mi-funcionalidad/` y registra sus handlers desde
+`registrarHandlersSocket`:
+
+```js
+socket.on('mi_evento', (datos) => {
+  responderSeguro(socket, {
+    eventoRespuesta: 'respuesta_mi_evento',
+    operacion: () => miServicio.miOperacion(datos),
+    alExito: (r) => console.log(`✅ MI_EVENTO OK: ${JSON.stringify(r)}`)
+  });
+});
+```
+
+Luego probar el evento en `test/socket.test.js` con el cliente de `socket.io-client`.
+
+### Agregar un módulo de funcionalidad
+
+1. Crear `src/modules/mi-funcionalidad/` con el servicio, el adaptador de entrada (router o handler) y el repositorio de esa funcionalidad cuando corresponda.
+2. Exportar las operaciones públicas desde `index.js` e inyectar los adaptadores compartidos desde `crearApp()` (`src/app.js`).
+3. Escribir pruebas unitarias del servicio y una prueba de integración de su recorrido real, reutilizando repositorios en memoria y `NotificadorEspia` (ver `test/doubles.js`).
+
+### Cambiar el esquema de la base de datos
+
+Editar `src/infraestructura/sqlite/esquema.sql`. Si la tabla ya existe en producción, agregar la migración como un bloque `ALTER TABLE … ADD COLUMN … IF NOT EXISTS` antes del `CREATE TABLE … IF NOT EXISTS` correspondiente.
