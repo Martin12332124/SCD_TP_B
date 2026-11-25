@@ -1,8 +1,8 @@
-// src/dominio/pedido.service.js
+// src/modules/pedidos/pedido.service.js
 // Servicio de dominio para la gestión de pedidos.
 // Dependencias explícitas inyectadas por constructor: pedidos, mesas, notificador.
 
-const { verificarConsistenciaMesasPedidos } = require('./consistencia');
+const { verificarConsistenciaMesasPedidos } = require('../../dominio/consistencia');
 
 /** Rango permitido de unidades por producto en una misma confirmación (US-13 CA2 y CA3). */
 const CANTIDAD_MINIMA = 1;

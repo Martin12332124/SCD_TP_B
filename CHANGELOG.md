@@ -16,3 +16,4 @@
 
 ## [v0.1.0-alpha] — 2026-11-01 (Hito 2)
 - Servicios de dominio (`PedidoService`, `MesaService`, `MesaEstadoService`, `MesaConfiguracionService`, `MenuItemService`, `UsuarioService`), persistencia SQLite, autenticación JWT, API gateway y sincronización opcional con Supabase.
+

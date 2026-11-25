@@ -19,7 +19,8 @@ ni duplicadas (**REF-09**).
 | --- | --- |
 | `src/infraestructura/sqlite/esquema.sql` | Las tablas (`CREATE TABLE IF NOT EXISTS`). Se ejecuta en cada arranque sin tocar los datos existentes. |
 | `src/infraestructura/sqlite/conexion.js` | `abrirBaseDeDatos(ruta)`: crea la carpeta si falta, abre el archivo, aplica la configuración (pragmas) y el esquema. Exporta `RUTA_POR_DEFECTO`. |
-| `src/infraestructura/sqlite/repositorios-sqlite.js` | `PedidosSQLite`, `MesasSQLite`, `MenuItemsSQLite`: mismos métodos, parámetros y retornos que los repositorios en memoria. |
+| `src/modules/pedidos/pedido.repository.sqlite.js` | `PedidosSQLite`: repositorio SQLite propio del módulo de pedidos; sus dependencias se inyectan desde `crearApp()`. |
+| `src/infraestructura/sqlite/repositorios-sqlite.js` | `MesasSQLite`, `MenuItemsSQLite`: repositorios compartidos de mesas y menú. |
 | `src/infraestructura/sqlite/transacciones.js` | `envolverEnTransaccion` (cada caso de uso en una transacción) y `NotificadorTransaccional` (retiene los eventos hasta el commit). |
 | `test/repositorios.contrato.test.js` | Los mismos tests contra la versión en memoria y la SQLite, más tests propios de SQLite (emojis, copias, tipos, cascada). |
 | `test/persistencia-sqlite.test.js` | Conexión y pragmas, transacciones, atomicidad de `confirmarPedido` y `trasladarPedido`, y reinicio (cerrar y reabrir el mismo archivo). |

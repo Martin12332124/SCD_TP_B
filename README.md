@@ -102,7 +102,7 @@ A continuación, tienes los pasos exactos, detallados desde cero, para descargar
 | 2 | Mapa de mesas en tiempo real | US-08 | `GET /api/mesas`, evento `estado_mesas` en `src/app.js` | `src/MapaMesas.jsx`, `src/App.jsx` | `test/api.test.js`, `test/socket.test.js` |
 | 3 | Traslado de pedido entre mesas | US-05 | `src/dominio/mesa.service.js`, evento `trasladar_pedido` | formulario de traslado en `src/App.jsx` | `test/mesa.service.test.js`, `test/socket.test.js` |
 | 4 | Precio base de productos (crear/editar) | US-07 | `src/dominio/menu-item.service.js`, `src/presentacion/menu-items.router.js` | — | `test/menu-item.service.test.js`, `test/api.test.js` |
-| 5 | Toma de pedido, confirmación y disponibilidad | US-04 (parcial) | `src/dominio/pedido.service.js` (`confirmarPedido`), `PATCH /api/menu-items/:id` | `src/TomaPedido.jsx` | `test/pedido.service.test.js`, `test/socket.test.js` |
+| 5 | Toma de pedido, confirmación y disponibilidad | US-04 (parcial) | `src/modules/pedidos/pedido.service.js` (`confirmarPedido`), `PATCH /api/menu-items/:id` | `src/modules/pedidos/components/TomaPedido.jsx` | `test/pedido.service.test.js`, `test/socket.test.js` |
 
 ### Cómo ejecutar
 ``` bash 
@@ -277,19 +277,25 @@ Esta sección explica dónde tocar el código para las extensiones más comunes,
 
 ### Agregar una nueva ruta HTTP
 
-1. Crear `src/presentacion/mi-funcionalidad.router.js` con el patrón de `mesas.router.js`:
+1. Crear `src/modules/mi-funcionalidad/mi-funcionalidad.router.js` junto al servicio de la función:
    - Recibe las dependencias por parámetro (`crearMiFuncionalidadRouter(deps)`), sin importarlas directamente.
    - Mapea cada tipo de error del servicio a su código HTTP (`HTTP_STATUS`).
-2. Montar el router en `src/app.js`:
+2. Exportar el router desde `src/modules/mi-funcionalidad/index.js` y montarlo en `src/app.js`:
    ```js
-   const { crearMiFuncionalidadRouter } = require('./presentacion/mi-funcionalidad.router');
+   const { crearMiFuncionalidadRouter } = require('./modules/mi-funcionalidad');
    app.use('/api', crearMiFuncionalidadRouter({ miServicio }));
    ```
 3. Escribir al menos un test en `test/api.test.js` que levante `crearAppConSesion()` y llame a la ruta nueva.
 
 ### Agregar un nuevo evento Socket.IO
 
-En `src/presentacion/socket.handlers.js`, dentro de `registrarHandlersSocket`, agregar:
+Para un evento propio de una funcionalidad, agrégalo en el módulo correspondiente (por ejemplo,
+`src/modules/pedidos/pedido.socket.handlers.js`) y registra la función desde
+`src/presentacion/socket.handlers.js`. Mantén en presentación solo la conexión y las operaciones
+transversales; usa `responderSeguro` para conservar el formato común de respuestas y errores.
+
+Para una funcionalidad nueva, crea `src/modules/mi-funcionalidad/` y registra sus handlers desde
+`registrarHandlersSocket`:
 
 ```js
 socket.on('mi_evento', (datos) => {
@@ -303,11 +309,11 @@ socket.on('mi_evento', (datos) => {
 
 Luego probar el evento en `test/socket.test.js` con el cliente de `socket.io-client`.
 
-### Agregar un nuevo servicio de dominio
+### Agregar un módulo de funcionalidad
 
-1. Crear `src/dominio/mi-servicio.js`. El constructor recibe las dependencias explícitas (repositorios, notificador); no hace `require` de ellas.
-2. Instanciar el servicio en `crearApp()` (`src/app.js`) e inyectar los repositorios que necesita.
-3. Escribir `test/mi-servicio.test.js` con repositorios en memoria (`PedidosEnMemoria`, `MesasEnMemoria`) y un `NotificadorEspia` (ver `test/doubles.js`).
+1. Crear `src/modules/mi-funcionalidad/` con el servicio, el adaptador de entrada (router o handler) y el repositorio de esa funcionalidad cuando corresponda.
+2. Exportar las operaciones públicas desde `index.js` e inyectar los adaptadores compartidos desde `crearApp()` (`src/app.js`).
+3. Escribir pruebas unitarias del servicio y una prueba de integración de su recorrido real, reutilizando repositorios en memoria y `NotificadorEspia` (ver `test/doubles.js`).
 
 ### Cambiar el esquema de la base de datos
 

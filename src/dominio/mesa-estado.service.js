@@ -3,7 +3,7 @@
 // Dependencias explícitas inyectadas por constructor: pedidos, mesas, notificador.
 
 const { verificarConsistenciaMesasPedidos } = require('./consistencia');
-const { ESTADO_LISTO } = require('./pedido.service');
+const { ESTADO_LISTO } = require('../modules/pedidos');
 
 /**
  * MesaEstadoService

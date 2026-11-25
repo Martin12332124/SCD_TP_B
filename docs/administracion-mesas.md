@@ -53,7 +53,7 @@ describía el comportamiento anterior.
 | `src/infraestructura/repositorios.js` | Los mismos dos métodos en `MesasEnMemoria`, para que ambos repositorios cumplan el mismo contrato. |
 | `src/presentacion/mesas.router.js` | Rutas `POST /api/mesas` y `DELETE /api/mesas/:numero`; tipos de error `DUPLICADO` y `LIMITE_ALCANZADO` → 409. |
 | `src/app.js` | Crea el servicio nuevo, lo envuelve en transacción y usa el decorador `MesasConEstadoPedido`. |
-| `src/dominio/pedido.service.js` | "Listo" ya no borra el pedido ni libera la mesa. Exporta `ESTADO_LISTO`. |
+| `src/modules/pedidos/pedido.service.js` | "Listo" ya no borra el pedido ni libera la mesa. Exporta `ESTADO_LISTO`. |
 | `src/dominio/mesa-estado.service.js` | `cerrarMesa` acepta una mesa con pedido Listo y cierra ese pedido al liberarla. |
 | `test/repositorios.contrato.test.js`, `test/api.test.js`, `test/socket.test.js`, `test/persistencia-sqlite.test.js`, `test/mesa-estado.service.test.js`, `test/mesa.service.test.js` | Casos nuevos (sin tocar los existentes). |
 | `test/pedido.service.test.js`, `test/integracion.test.js` | 3 tests que describían el "Listo" anterior (ver sección 6) y casos nuevos. |

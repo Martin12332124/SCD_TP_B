@@ -3,6 +3,8 @@
 // a los servicios de dominio y responde por el mismo socket.
 // Antes este código vivía dentro de app.js, mezclado con la composición de la app.
 
+const { registrarHandlersPedido } = require('../modules/pedidos');
+
 /**
  * Ejecuta una operación de dominio y responde al cliente por `eventoRespuesta`.
  * Centraliza el try/catch que antes estaba copiado en cada evento.
@@ -55,24 +57,7 @@ function registrarHandlersSocket(io, { pedidoService, mesaService, mesas }) {
     // Enviar estado inicial de mesas al cliente que se conecta
     socket.emit('estado_mesas', mesas.listar());
 
-    // Recibir actualización de pedido desde el frontend
-    socket.on('actualizar_pedido', (datos) => {
-      console.log('\n[SOCKET] Intento de actualización de pedido:', datos);
-      responderSeguro(socket, {
-        eventoRespuesta: 'respuesta_pedido',
-        operacion: () => pedidoService.actualizarEstado(datos),
-        alExito: (r) => console.log(`✅ VALIDADO: ${r.mesa} → ${r.estado}`)
-      });
-    });
-
-    // Atajo: confirmar el pedido de una mesa y enviarlo directo a cocina
-    socket.on('confirmar_pedido', (datos) => {
-      console.log('\n[SOCKET] Confirmación de pedido (directo a cocina):', datos);
-      responderSeguro(socket, {
-        eventoRespuesta: 'respuesta_pedido',
-        operacion: () => pedidoService.confirmarPedido(datos)
-      });
-    });
+    registrarHandlersPedido(socket, { pedidoService, responderSeguro });
 
     socket.on('disconnect', () => {
       console.log(`[SOCKET] Cliente desconectado. ID: ${socket.id}`);
