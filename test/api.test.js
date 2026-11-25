@@ -126,6 +126,14 @@ describe('API de mesas: estado del pedido en la lista', () => {
 });
 
 describe('API de mesas: pedido "Listo 🍽️" y liberar la mesa', () => {
+  test('GET /api/mesas/:numero/pedido valida entradas y mesa inexistente', async () => {
+    expect((await llamar('GET', '/api/mesas/abc/pedido')).status).toBe(400);
+
+    const ausente = await llamar('GET', '/api/mesas/11/pedido');
+    expect(ausente.status).toBe(404);
+    expect(ausente.json.tipo).toBe('NO_ENCONTRADO');
+  });
+
   test('con el pedido Listo, la mesa sigue ocupada y la lista lo refleja', async () => {
     ctx.pedidoService.confirmarPedido({ mesa: 'Mesa 2', items: [{ id: 1, cantidad: 1 }] });
     ctx.pedidoService.actualizarEstado({ mesa: 'Mesa 2', estado: 'Listo 🍽️' });

@@ -21,7 +21,6 @@ const { Router } = require('express');
  * @param {object} deps
  * @param {import('../dominio/mesa-estado.service').MesaEstadoService} deps.mesaEstadoService
  * @param {object} deps.mesas - repositorio de mesas (obtener, listar)
- * @param {object} [deps.pedidoService] - para el resumen del pedido de una mesa
  * @param {object} [deps.mesaConfiguracionService] - agregarMesa(datos), quitarMesa(numero);
  *   si no se inyecta, las rutas para agregar y quitar mesas no se exponen
  * @returns {Router}
@@ -29,7 +28,6 @@ const { Router } = require('express');
 function crearMesasRouter({
   mesaEstadoService,
   mesas,
-  pedidoService = null,
   mesaConfiguracionService = null
 }) {
   const router = Router();
@@ -58,35 +56,6 @@ function crearMesasRouter({
   });
 
   /**
-   * GET /api/mesas/:numero/pedido
-   *
-   * Resumen de lo que la mesa tiene pedido: ítems acumulados, total y estado.
-   *
-   * Respuestas:
-   *   200 OK  { ok: true, mesa, estado, items: [{ id, nombre, precioBase, cantidad }], total }
-   *   400 Bad Request / 404 Not Found según la validación de la mesa
-   */
-  router.get('/:numero/pedido', (req, res) => {
-    const validacion = mesaEstadoService._validarNumero(req.params.numero);
-    if (!validacion.ok) {
-      return res.status(HTTP_STATUS[validacion.tipo] ?? 400).json(validacion);
-    }
-    if (!mesas.obtener(validacion.mesaId)) {
-      return res.status(404).json({
-        ok: false,
-        tipo: 'NO_ENCONTRADO',
-        error: `La mesa ${req.params.numero} no existe.`
-      });
-    }
-    if (!pedidoService) {
-      return res
-        .status(200)
-        .json({ ok: true, mesa: validacion.mesaId, estado: null, items: [], total: 0 });
-    }
-    return res.status(200).json(pedidoService.obtenerResumen(validacion.mesaId));
-  });
-
-  /**
    * GET /api/mesas/:numero
    *
    * Devuelve el detalle de una mesa específica: número, estado y cuenta abierta si la tiene.
@@ -100,7 +69,7 @@ function crearMesasRouter({
    */
   router.get('/:numero', (req, res) => {
     // Reusar la validación del servicio para número de mesa
-    const validacion = mesaEstadoService._validarNumero(req.params.numero);
+    const validacion = mesaEstadoService.validarNumero(req.params.numero);
     if (!validacion.ok) {
       return res.status(HTTP_STATUS[validacion.tipo] ?? 400).json(validacion);
     }

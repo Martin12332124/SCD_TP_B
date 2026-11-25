@@ -38,7 +38,7 @@ class MesaEstadoService {
     this.notificador = notificador;
   }
 
-  // ─── helpers privados ──────────────────────────────────────────────────────
+  // ─── validación reutilizada por los routers HTTP ────────────────────────────
 
   /**
    * Valida que el número de mesa sea un entero entre 1 y 10.
@@ -53,7 +53,7 @@ class MesaEstadoService {
    *   - numero = "abc" → ENTRADA_INVALIDA
    *   - numero = 1.5  → ENTRADA_INVALIDA
    */
-  _validarNumero(numero) {
+  validarNumero(numero) {
     // El parámetro llega como string desde la URL. Se exige solo dígitos, sin ceros
     // a la izquierda ni signos: rechaza "1e1", "0x5", " 5", "1.5", "-1" y "0".
     if (!/^[1-9]\d*$/.test(String(numero))) {
@@ -91,7 +91,7 @@ class MesaEstadoService {
    */
   abrirMesa(numero) {
     // ── Validación de entrada ──────────────────────────────────────────
-    const validacion = this._validarNumero(numero);
+    const validacion = this.validarNumero(numero);
     if (!validacion.ok) return validacion;
 
     const { mesaId } = validacion;
@@ -146,7 +146,7 @@ class MesaEstadoService {
    */
   cerrarMesa(numero) {
     // ── Validación de entrada ──────────────────────────────────────────
-    const validacion = this._validarNumero(numero);
+    const validacion = this.validarNumero(numero);
     if (!validacion.ok) return validacion;
 
     const { mesaId } = validacion;

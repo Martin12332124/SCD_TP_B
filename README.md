@@ -160,7 +160,7 @@ con la mesa ocupada hasta liberarla. Detalles: [docs/administracion-mesas.md](do
 
 Antes de hacer nada, la computadora externa necesita tener instalado **Node.js 22 LTS** (o superior compatible). Si no lo tiene, no funcionará nada.
 
-> **Versión empaquetada (`v3.0.0`):** para probar la entrega exacta del Hito 3 tras clonar, ejecuta `git checkout v3.0.0`. Ver notas de cambio en [CHANGELOG.md](CHANGELOG.md) y el informe completo del Hito 3 en el repositorio frontend (`docs/guia-unidad-3.md`).
+> **Entrega local `v3.0.0`:** esta candidata integra los cambios aprobados por el equipo en ambos repositorios. La etiqueta identifica los commits incluidos en el ZIP de entrega; la revisión independiente y la publicación del paquete en un enlace accesible siguen pendientes. Ver notas en [CHANGELOG.md](CHANGELOG.md) e informe en el repositorio frontend ([docs/guia-unidad-3.md](https://github.com/Martin12332124/SCD_TP_F/blob/dev/docs/guia-unidad-3.md)).
 
 ### Problemas frecuentes
 
@@ -215,7 +215,7 @@ cd SCD_TP_B
 Las librerías del proyecto NO vienen incluidas en la descarga porque son pesadas. Tienes que instalarlas ejecutando este comando exacto y presionando `Enter`:
 
 ```bash
-npm install
+npm ci
 ```
 
 ```bash
