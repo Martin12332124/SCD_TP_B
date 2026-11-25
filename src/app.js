@@ -7,7 +7,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 
-const { PedidoService, PedidosSQLite } = require('./modules/pedidos');
+const { PedidoService, PedidosSQLite, crearPedidosRouter } = require('./modules/pedidos');
 const { MesaService } = require('./dominio/mesa.service');
 const { MesaEstadoService } = require('./dominio/mesa-estado.service');
 const { MesaConfiguracionService } = require('./dominio/mesa-configuracion.service');
@@ -175,7 +175,16 @@ function crearApp({
   app.use(
     '/api/mesas',
     conSesion,
-    crearMesasRouter({ mesaEstadoService, mesas, pedidoService, mesaConfiguracionService })
+    crearMesasRouter({ mesaEstadoService, mesas, mesaConfiguracionService })
+  );
+  app.use(
+    '/api/mesas',
+    conSesion,
+    crearPedidosRouter({
+      pedidoService,
+      mesas,
+      validarNumeroMesa: (numero) => mesaEstadoService.validarNumero(numero)
+    })
   );
 
   // ── API REST (US-07): gestión de ítems del menú ───────────────────
